@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recicladora Alexander</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
+        body { background-color: #f0f8f0; padding: 10px; font-size: 14px; line-height: 1.5; }
+        .container { max-width: 100%; margin: 0 auto; background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        h1 { font-size: 20px; text-align: center; color: #2e7d32; margin-bottom: 16px; font-weight: 700; }
+        h2 { font-size: 17px; color: #2e7d32; margin-bottom: 10px; text-align: center; font-weight: 600; }
+        .section { margin-bottom: 18px; padding: 12px; border: 1px solid #c8e6c9; border-radius: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 10px; }
+        input, select, button { padding: 9px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; width: 100%; }
+        button { background-color: #388e3c; color: #fff; border: none; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+        button:hover { background-color: #2e7d32; }
+        .btn-danger { background-color: #d32f2f; }
+        .btn-danger:hover { background-color: #b71c1c; }
+        .btn-ver { background-color: #1976d2; padding: 7px 10px; font-size: 13px; border-radius: 6px; }
+        .btn-ver:hover { background-color: #1565c0; }
+        .table-wrap { overflow-x: auto; margin-top: 8px; border-radius: 8px; border: 1px solid #e0e0e0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 550px; }
+        th, td { border: 1px solid #e0e0e0; padding: 8px 6px; text-align: center; vertical-align: middle; }
+        th { background-color: #e8f5e9; color: #1b5e20; font-weight: 600; }
+        .total { text-align: right; font-size: 17px; font-weight: 700; color: #1b5e20; margin: 10px 0; padding-right: 6px; }
+        .resumen { background-color: #f1f8e9; border-color: #8bc34a; }
+        .historial { background-color: #fff8e1; border-color: #ffb74d; }
+        .totales-generales { background-color: #e3f2fd; border-color: #42a5f5; margin-top: 12px; }
+        .aviso { background: #e3f2fd; padding: 9px; border-radius: 8px; margin-bottom: 10px; text-align: center; color: #1565c0; font-size: 13px; font-weight: 500; }
+        .tabla-resumen { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+        .tabla-resumen th, .tabla-resumen td { border: 1px solid #e0e0e0; padding: 8px 5px; text-align: right; }
+        .tabla-resumen th:first-child, .tabla-resumen td:first-child { text-align: left; }
+        .tabla-resumen th { background: #e8f5e9; font-weight: 600; }
+        #ventanaFactura { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center; padding: 10px; }
+        .caja-factura { background: white; width: 100%; max-width: 500px; padding: 25px; border-radius: 12px; position: relative; max-height: 95vh; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+        .btn-cerrar { position: absolute; top: 8px; right: 12px; font-size: 28px; border: none; background: none; cursor: pointer; color: #666; font-weight: 400; }
+        .tabla-factura { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14px; }
+        .tabla-factura th, .tabla-factura td { border: 1px solid #444; padding: 10px 6px; text-align: right; }
+        .tabla-factura th:first-child, .tabla-factura td:first-child { text-align: left; }
+        .tabla-factura th { background: #f5f5f5; font-weight: 600; font-size: 14px; }
+        .desglose { margin-top: 18px; text-align: right; font-size: 14px; padding-right: 6px; }
+        .desglose div { margin: 6px 0; padding: 4px 0; }
+        .total-final { font-size: 18px; font-weight: 700; color: #1b5e20; border-top: 2px solid #2e7d32; padding-top: 8px; margin-top: 6px; }
+        @media (max-width: 480px) {
+            body { padding: 6px; font-size: 13px; }
+            .container { padding: 10px; border-radius: 10px; }
+            h1 { font-size: 18px; }
+            h2 { font-size: 16px; }
+            .grid { grid-template-columns: 1fr; }
+            table { min-width: 480px; font-size: 12px; }
+            th, td { padding: 7px 4px; }
+            .total { font-size: 15px; }
+            .caja-factura { padding: 18px; }
+            .btn-cerrar { font-size: 24px; }
+        }
+        @media print {
+            body { background: white; padding: 0; font-size: 15px; }
+            .container, .btn-cerrar, button, .aviso, .section { display: none !important; }
+            #ventanaFactura { position: static; display: block !important; background: white; width: 100%; height: auto; padding: 0; }
+            .caja-factura { width: 100%; max-width: 100%; padding: 15px; box-shadow: none; border: none; border-radius: 0; }
+            .tabla-factura { font-size: 16px; }
+            .tabla-factura th, .tabla-factura td { padding: 12px 8px; }
+            .desglose { font-size: 16px; }
+            .total-final { font-size: 20px; }
+            @page { size: A4; margin: 1.2cm; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>♻️ Recicladora Alexander</h1>
+    <div class="aviso">✅ Conectado a tu base en la nube - Control de Compras y Totales</div>
+
+    <div class="section">
+        <h2>Configurar Materiales</h2>
+        <div class="grid">
+            <input type="text" id="nombreMaterial" placeholder="Ej: Cartón" required>
+            <select id="unidadMedida">
+                <option value="Libra">Libra</option>
+                <option value="Kilo">Kilo</option>
+            </select>
+            <input type="number" step="0.01" id="precioUnitario" placeholder="Precio $">
+            <button onclick="guardarMaterial()">Guardar</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Materiales Guardados</h2>
+        <div class="table-wrap">
+            <table id="tablaMateriales">
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Unidad</th>
+                        <th>Precio Unitario</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Recibir Materiales</h2>
+        <div class="grid">
+            <select id="materialSeleccionado"></select>
+            <input type="number" step="0.5" id="cantidadRecibida" placeholder="Cantidad">
+            <button onclick="agregarAlCarrito()">Agregar</button>
+        </div>
+    </div>
+
+    <div class="section resumen">
+        <h2>Resumen de Compra Actual</h2>
+        <div id="listaCompra">
+            <p style="text-align:center; color:#666; padding:12px;">No hay materiales agregados aún</p>
+        </div>
+        <div class="total" id="totalCompra">Total a Pagar: $0.00</div>
+        <br>
+        <button onclick="generarFactura()" style="width:100%; font-size:16px;">📄 Guardar Compra y Generar Factura</button>
+    </div>
+
+    <div class="section totales-generales">
+        <h2>📊 TOTALES ACUMULADOS POR MATERIAL</h2>
+        <p style="text-align:center; font-size:13px; color:#555; margin-bottom:8px;">Suma de todas las compras registradas</p>
+        <div id="listaTotales">
+            <p style="text-align:center; color:#666; padding:12px;">Aún no hay compras registradas</p>
+        </div>
+    </div>
+
+    <div class="section historial">
+        <h2>📋 Historial de Compras Realizadas</h2>
+        <div id="listaHistorial">
+            <p style="text-align:center; color:#666; padding:12px;">Aún no hay compras guardadas</p>
+        </div>
+    </div>
+</div>
+
+<div id="ventanaFactura">
+    <div class="caja-factura">
+        <button class="btn-cerrar" onclick="cerrarVentana()">×</button>
+        <div id="contenidoFactura"></div>
+        <div style="text-align:center; margin-top:20px;">
+            <button onclick="window.print()" style="font-size:15px; padding:10px 20px;">🖨️ Imprimir Factura</button>
+            <button class="btn-danger" onclick="cerrarVentana()" style="font-size:15px; padding:10px 20px;">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==============================================
+// 🔑 SOLO PON TU CLAVE AQUÍ
+// ==============================================
+const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
+const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
+
+let supabaseCliente;
+let carrito = [];
+
+// ==============================================
+// INICIALIZAR TODO AL CARGAR
+// ==============================================
+document.addEventListener('DOMContentLoaded', async () => {
+    supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
+    await cargarMateriales();
+    await cargarHistorialYTotales();
+});
+
+// ==============================================
+// CARGAR LISTA DE MATERIALES
+// ==============================================
+async function cargarMateriales(){
+    try {
+        const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true});
+        if(error) throw error;
+        actualizarTablaMateriales(data || []);
+        actualizarSelectMateriales(data || []);
+    } catch (err) {
+        alert("Error al cargar materiales: " + err.message);
+    }
+}
+
+// ==============================================
+// GUARDAR NUEVO MATERIAL
+// ==============================================
+async function guardarMaterial(){
+    const nombre = document.getElementById('nombreMaterial').value.trim();
+    const unidad = document.getElementById('unidadMedida').value;
+    const precio = parseFloat(document.getElementById('precioUnitario').value);
+
+    if(!nombre) return alert('⚠️ Escribe el nombre del material');
+    if(isNaN(precio) || precio <= 0) return alert('⚠️ Pon un precio mayor a 0');
+
+    try {
+        const { error } = await supabaseCliente
+            .from('materiales')
+            .insert([{ nombre: nombre, unidad: unidad, precio: precio }]);
+
+        if(error) throw error;
+
+        alert("✅ ¡MATERIAL GUARDADO!");
+        document.getElementById('nombreMaterial').value = '';
+        document.getElementById('precioUnitario').value = '';
+        await cargarMateriales();
+    } catch (err) {
+        alert("❌ No se guardó: " + err.message);
+    }
+}
+
+function actualizarTablaMateriales(lista){
+    const cuerpo = document.getElementById('cuerpoTabla');
+    cuerpo.innerHTML = lista.map(m => `
+        <tr>
+            <td>${m.nombre}</td>
+            <td>${m.unidad}</td>
+            <td>$${m.precio.toFixed(2)}</td>
+            <td><button class="btn-danger" onclick="eliminarMaterial(${m.id})">Eliminar</button></td>
+        </tr>
+    `).join('');
+}
+
+async function eliminarMaterial(id){
+    try {
+        const { error } = await supabaseCliente.from('materiales').delete().eq('id', id);
+        if(error) throw error;
+        await cargarMateriales();
+    } catch (err) {
+        alert("No se pudo eliminar: " + err.message);
+    }
+}
+
+function actualizarSelectMateriales(lista){
+    const select = document.getElementById('materialSeleccionado');
+    select.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio.toFixed(2)}/${m.unidad}</option>`).join('');
+}
+
+// ==============================================
+// AGREGAR AL CARRITO DE COMPRA
+// ==============================================
+async function agregarAlCarrito(){
+    const nombre = document.getElementById('materialSeleccionado').value;
+    const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
+    if(!cantidad || cantidad <=0) return alert('Pon una cantidad válida');
+    
+    const { data: mat, error } = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).single();
+    if(error || !mat) return alert("Material no encontrado");
+    
+    carrito.push({
+        nombre: mat.nombre,
+        cantidad: cantidad,
+        unidad: mat.unidad,
+        precio: mat.precio,
+        total: cantidad * mat.precio
+    });
+    actualizarCarrito();
+    document.getElementById('cantidadRecibida').value = '';
+}
+
+function actualizarCarrito(){
+    const lista = document.getElementById('listaCompra');
+    if(carrito.length === 0){
+        lista.innerHTML = `<p style="text-align:center; color:#666; padding:12px;">No hay materiales agregados aún</p>`;
+    } else {
+        let agrupado = {};
+        carrito.forEach(item => {
+            agrupado[item.nombre] = agrupado[item.nombre] || { ...item, cantidad:0, total:0 };
+            agrupado[item.nombre].cantidad += item.cantidad;
+            agrupado[item.nombre].total += item.total;
+        });
+        const listaAgrupada = Object.values(agrupado);
+
+        lista.innerHTML = `
+        <table class="tabla-resumen">
+            <tr>
+                <th>Material</th>
+                <th>Cantidad</th>
+                <th>Precio U.</th>
+                <th>Subtotal</th>
+            </tr>
+            ${listaAgrupada.map(i => `
+            <tr>
+                <td>${i.nombre}</td>
+                <td>${i.cantidad} ${i.unidad}</td>
+                <td>$${i.precio.toFixed(2)}</td>
+                <td>$${i.total.toFixed(2)}</td>
+            </tr>
+            `).join('')}
+        </table>
+        `;
+    }
+    const total = carrito.reduce((s,i) => s + i.total, 0);
+    document.getElementById('totalCompra').textContent = `Total a Pagar: $${total.toFixed(2)}`;
+}
+
+// ==============================================
+// GUARDAR COMPRA Y GENERAR FACTURA
+// ==============================================
+async function generarFactura(){
+    if(carrito.length === 0) return alert('Agrega materiales primero');
+
+    let agrupado = {};
+    carrito.forEach(item => {
+        agrupado[item.nombre] = agrupado[item.nombre] || { ...item, cantidad:0, total:0 };
+        agrupado[item.nombre].cantidad += item.cantidad;
+        agrupado[item.nombre].total += item.total;
+    });
+    const listaAgrupada = Object.values(agrupado);
+    const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
+    const fecha = new Date().toLocaleDateString('es-EC');
+
+    // Guardar factura en la base de datos
+    await supabaseCliente.from('facturas').insert([{
+        fecha: fecha,
+        total_general: totalGeneral,
+        detalles: listaAgrupada
+    }]);
+
+    // Mostrar factura
+    document.getElementById("contenidoFactura").innerHTML = `
+        <h2 style="text-align:center; font-size:20px; margin-bottom:18px;">FACTURA DE RECIBO</h2>
+        <hr style="border:1px dashed #ccc; margin:12px 0;">
+        <p style="font-size:15px;"><strong>Fecha:</strong> ${fecha}</p>
+        <p style="font-size:15px;"><strong>Recicladora Alexander</strong></p>
+        <hr style="border:1px dashed #ccc; margin:18px 0;">
+
+        <table class="tabla-factura">
+            <tr>
+                <th>Material</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Subtotal</th>
+            </tr>
+            ${listaAgrupada.map(i => `
+            <tr>
+                <td>${i.nombre}</td>
+                <td>${i.cantidad} ${i.unidad}</td>
+                <td>$${i.precio.toFixed(2)}</td>
+                <td>$${i.total.toFixed(2)}</td>
+            </tr>
+            `).join('')}
+        </table>
+
+        <div class="desglose">
+            <div>Subtotal: $${totalGeneral.toFixed(2)}</div>
+            <div>IVA 0% (Sector Reciclaje): $0.00</div>
+            <div class="total-final">Total a Pagar: $${totalGeneral.toFixed(2)}</div>
+        </div>
+
+        <p style="text-align:center; font-size:13px; margin-top:20px;">
+            Gracias por su confianza<br>
+            Portoviejo - Manabí - Ecuador
+        </p>
+    `;
+
+    document.getElementById("ventanaFactura").style.display = "flex";
+    carrito = [];
+    actualizarCarrito();
+    
+    // Actualizar historial y totales acumulados
+    await cargarHistorialYTotales();
+}
+
+function cerrarVentana(){
+    document.getElementById("ventanaFactura").style.display = "none";
+}
+
+// ==============================================
+// CARGAR HISTORIAL Y TOTALES ACUMULADOS
+// ==============================================
+async function cargarHistorialYTotales(){
+    try {
+        const { data: facturas, error } = await supabaseCliente
+            .from('facturas')
+            .select('*')
+            .order('creado_el', {ascending: false});
+
+        if(error) throw error;
+
+        // 1. Calcular totales acumulados por material
+        const totalesMateriales = {};
+        facturas.forEach(factura => {
+            factura.detalles.forEach(item => {
+                if(!totalesMateriales[item.nombre]){
+                    totalesMateriales[item.nombre] = {
+                        cantidadTotal: 0,
+                        unidad: item.unidad,
+                        montoTotal: 0
+                    };
+                }
+                totalesMateriales[item.nombre].cantidadTotal += item.cantidad;
+                totalesMateriales[item.nombre].montoTotal += item.total;
+            });
+        });
+
+        // Mostrar totales acumulados
+        const listaTotales = document.getElementById('listaTotales');
+        if(Object.keys(totalesMateriales).length === 0){
+            listaTotales.innerHTML = `<p style="text-align:center; color:#666; padding:12px;">Aún no hay compras registradas</p>`;
+        } else {
+            listaTotales.innerHTML = `
+            <table class="tabla-resumen">
+                <tr>
+                    <th>Material</th>
+                    <th>Cantidad Total Comprada</th>
+                    <th>Monto Total Invertido</th>
+                </tr>
+                ${Object.entries(totalesMateriales).map(([nombre, datos]) => `
+                <tr>
+                    <td>${nombre}</td>
+                    <td>${datos.cantidadTotal.toFixed(1)} ${datos.unidad}</td>
+                    <td>$${datos.montoTotal.toFixed(2)}</td>
+                </tr>
+                `).join('')}
+            </table>
+            `;
+        }
+
+        // 2. Mostrar historial de compras
+        const listaHistorial = document.getElementById('listaHistorial');
+        if(facturas.length === 0){
+            listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:12px;">Aún no hay compras guardadas</p>`;
+        } else {
+            listaHistorial.innerHTML = `
+            <table class="tabla-resumen">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Total de la Compra</th>
+                    <th>Detalles</th>
+                </tr>
+                ${facturas.map(f => `
+                <tr>
+                    <td>${f.fecha}</td>
+                    <td>$${f.total_general.toFixed(2)}</td>
+                    <td><button class="btn-ver" onclick='verDetalleFactura(${JSON.stringify(f).replace(/'/g, "&#39;")})'>Ver Detalle</button></td>
+                </tr>
+                `).join('')}
+            </table>
+            `;
+        }
+
+    } catch (err) {
+        console.error("Error al cargar historial: ", err);
+    }
+}
+
+// ==============================================
+// VER DETALLE DE UNA FACTURA ANTERIOR
+// ==============================================
+function verDetalleFactura(factura){
+    document.getElementById("contenidoFactura").innerHTML = `
+        <h2 style="text-align:center; font-size:20px; margin-bottom:18px;">DETALLE DE COMPRA</h2>
+        <hr style="border:1px dashed #ccc; margin:12px 0;">
+        <p style="font-size:15px;"><strong>Fecha:</strong> ${factura.fecha}</p>
+        <p style="font-size:15px;"><strong>Recicladora Alexander</strong></p>
+        <hr style="border:1px dashed #ccc; margin:18px 0;">
+
+        <table class="tabla-factura">
+            <tr>
+                <th>Material</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Subtotal</th>
+            </tr>
+            ${factura.detalles.map(i => `
+            <tr>
+                <td>${i.nombre}</td>
+                <td>${i.cantidad} ${i.unidad}</td>
+                <td>$${i.precio.toFixed(2)}</td>
+                <td>$${i.total.toFixed(2)}</td>
+            </tr>
+            `).join('')}
+        </table>
+
+        <div class="desglose">
+            <div>Subtotal: $${factura.total_general.toFixed(2)}</div>
+            <div>IVA 0% (Sector Reciclaje): $0.00</div>
+            <div class="total-final">Total Pagado: $${factura.total_general.toFixed(2)}</div>
+        </div>
+    `;
+    document.getElementById("ventanaFactura").style.display = "flex";
+}
+</script>
+</body>
+</html>
