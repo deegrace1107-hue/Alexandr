@@ -10,16 +10,24 @@
         body { background-color: #f0f8f0; padding: 10px; font-size: 14px; line-height: 1.5; }
         .container { max-width: 100%; margin: 0 auto; background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
         h1 { font-size: 20px; text-align: center; color: #2e7d32; margin-bottom: 16px; font-weight: 700; }
-        h2 { font-size: 17px; color: #2e7d32; margin-bottom: 10px; text-align: center; font-weight: 600; }
+        h2 { font-size: 17px; color: #2e7d32; margin-bottom: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .section { margin-bottom: 18px; padding: 12px; border: 1px solid #c8e6c9; border-radius: 10px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 10px; }
         input, select, button { padding: 9px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; width: 100%; }
         button { background-color: #388e3c; color: #fff; border: none; cursor: pointer; font-weight: 600; transition: background 0.2s; }
         button:hover { background-color: #2e7d32; }
+        .btn-quitar { background-color: #ef5350; padding: 5px 8px; font-size: 12px; border-radius: 4px; width: auto; }
+        .btn-quitar:hover { background-color: #e53935; }
         .btn-danger { background-color: #d32f2f; }
         .btn-danger:hover { background-color: #b71c1c; }
         .btn-ver { background-color: #1976d2; padding: 7px 10px; font-size: 13px; border-radius: 6px; }
         .btn-ver:hover { background-color: #1565c0; }
+        .btn-reiniciar { background-color: #ff9800; padding: 6px 12px; font-size: 13px; border-radius: 6px; }
+        .btn-reiniciar:hover { background-color: #fb8c00; }
+        .btn-cliente { background-color: #43a047; margin: 5px 0; }
+        .btn-cliente:hover { background-color: #388e3c; }
+        .btn-detallada { background-color: #1976d2; margin: 5px 0; }
+        .btn-detallada:hover { background-color: #1565c0; }
         .table-wrap { overflow-x: auto; margin-top: 8px; border-radius: 8px; border: 1px solid #e0e0e0; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 550px; }
         th, td { border: 1px solid #e0e0e0; padding: 8px 6px; text-align: center; vertical-align: middle; }
@@ -34,7 +42,7 @@
         .tabla-resumen th:first-child, .tabla-resumen td:first-child { text-align: left; }
         .tabla-resumen th { background: #e8f5e9; font-weight: 600; }
         #ventanaFactura { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center; padding: 10px; }
-        .caja-factura { background: white; width: 100%; max-width: 500px; padding: 25px; border-radius: 12px; position: relative; max-height: 95vh; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+        .caja-factura { background: white; width: 100%; max-width: 550px; padding: 25px; border-radius: 12px; position: relative; max-height: 95vh; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
         .btn-cerrar { position: absolute; top: 8px; right: 12px; font-size: 28px; border: none; background: none; cursor: pointer; color: #666; font-weight: 400; }
         .tabla-factura { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14px; }
         .tabla-factura th, .tabla-factura td { border: 1px solid #444; padding: 10px 6px; text-align: right; }
@@ -47,7 +55,7 @@
             body { padding: 6px; font-size: 13px; }
             .container { padding: 10px; border-radius: 10px; }
             h1 { font-size: 18px; }
-            h2 { font-size: 16px; }
+            h2 { font-size: 16px; flex-direction: column; gap: 5px; }
             .grid { grid-template-columns: 1fr; }
             table { min-width: 480px; font-size: 12px; }
             th, td { padding: 7px 4px; }
@@ -105,26 +113,28 @@
     </div>
 
     <div class="section">
-        <h2>Recibir Materiales</h2>
+        <h2>Recibir Materiales (cada pesada por separado)</h2>
         <div class="grid">
             <select id="materialSeleccionado"></select>
-            <input type="number" step="0.5" id="cantidadRecibida" placeholder="Cantidad">
-            <button onclick="agregarAlCarrito()">Agregar</button>
+            <input type="number" step="0.5" id="cantidadRecibida" placeholder="Peso de esta pesada">
+            <button onclick="agregarAlCarrito()">Agregar pesada</button>
         </div>
     </div>
 
     <div class="section resumen">
         <h2>Resumen de Compra Actual</h2>
         <div id="listaCompra">
-            <p style="text-align:center; color:#666; padding:12px;">No hay materiales agregados aún</p>
+            <p style="text-align:center; color:#666; padding:12px;">No hay pesadas agregadas aún</p>
         </div>
         <div class="total" id="totalCompra">Total a Pagar: $0.00</div>
         <br>
-        <button onclick="generarFactura()" style="width:100%; font-size:16px;">📄 Guardar Compra y Generar Factura</button>
+        <button onclick="generarFacturas()" style="width:100%; font-size:16px;">📄 Guardar Compra y Ver Facturas</button>
     </div>
 
     <div class="section totales-generales">
-        <h2>📊 TOTALES ACUMULADOS POR MATERIAL</h2>
+        <h2>📊 TOTALES ACUMULADOS POR MATERIAL
+            <button class="btn-reiniciar" onclick="reiniciarTotales()">🔄 Reiniciar Totales</button>
+        </h2>
         <p style="text-align:center; font-size:13px; color:#555; margin-bottom:8px;">Suma de todas las compras registradas</p>
         <div id="listaTotales">
             <p style="text-align:center; color:#666; padding:12px;">Aún no hay compras registradas</p>
@@ -144,7 +154,9 @@
         <button class="btn-cerrar" onclick="cerrarVentana()">×</button>
         <div id="contenidoFactura"></div>
         <div style="text-align:center; margin-top:20px;">
-            <button onclick="window.print()" style="font-size:15px; padding:10px 20px;">🖨️ Imprimir Factura</button>
+            <button id="btnImprimir" onclick="window.print()" style="font-size:15px; padding:10px 20px;">🖨️ Imprimir</button>
+            <button class="btn-detallada" id="btnVerDetallada" style="font-size:15px; padding:10px 20px; display:none;" onclick="mostrarDetallada()">📋 Ver Factura Detallada</button>
+            <button class="btn-cliente" id="btnVerCliente" style="font-size:15px; padding:10px 20px; display:none;" onclick="mostrarCliente()">🧾 Ver Factura Cliente</button>
             <button class="btn-danger" onclick="cerrarVentana()" style="font-size:15px; padding:10px 20px;">Cerrar</button>
         </div>
     </div>
@@ -159,6 +171,8 @@ const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 
 let supabaseCliente;
 let carrito = [];
+let totalesAcumulados = {};
+let facturaActual = null;
 
 // ==============================================
 // INICIALIZAR TODO AL CARGAR
@@ -238,12 +252,12 @@ function actualizarSelectMateriales(lista){
 }
 
 // ==============================================
-// AGREGAR AL CARRITO DE COMPRA
+// AGREGAR CADA PESADA POR SEPARADO
 // ==============================================
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
-    if(!cantidad || cantidad <=0) return alert('Pon una cantidad válida');
+    if(!cantidad || cantidad <=0) return alert('Pon el peso de esta pesada');
     
     const { data: mat, error } = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).single();
     if(error || !mat) return alert("Material no encontrado");
@@ -259,33 +273,35 @@ async function agregarAlCarrito(){
     document.getElementById('cantidadRecibida').value = '';
 }
 
+// ==============================================
+// ELIMINAR UNA PESADA DEL RESUMEN
+// ==============================================
+function quitarDelCarrito(indice){
+    carrito.splice(indice, 1);
+    actualizarCarrito();
+}
+
 function actualizarCarrito(){
     const lista = document.getElementById('listaCompra');
     if(carrito.length === 0){
-        lista.innerHTML = `<p style="text-align:center; color:#666; padding:12px;">No hay materiales agregados aún</p>`;
+        lista.innerHTML = `<p style="text-align:center; color:#666; padding:12px;">No hay pesadas agregadas aún</p>`;
     } else {
-        let agrupado = {};
-        carrito.forEach(item => {
-            agrupado[item.nombre] = agrupado[item.nombre] || { ...item, cantidad:0, total:0 };
-            agrupado[item.nombre].cantidad += item.cantidad;
-            agrupado[item.nombre].total += item.total;
-        });
-        const listaAgrupada = Object.values(agrupado);
-
         lista.innerHTML = `
         <table class="tabla-resumen">
             <tr>
                 <th>Material</th>
-                <th>Cantidad</th>
+                <th>Peso de esta pesada</th>
                 <th>Precio U.</th>
                 <th>Subtotal</th>
+                <th>Quitar</th>
             </tr>
-            ${listaAgrupada.map(i => `
+            ${carrito.map((item, indice) => `
             <tr>
-                <td>${i.nombre}</td>
-                <td>${i.cantidad} ${i.unidad}</td>
-                <td>$${i.precio.toFixed(2)}</td>
-                <td>$${i.total.toFixed(2)}</td>
+                <td>${item.nombre}</td>
+                <td>${item.cantidad} ${item.unidad}</td>
+                <td>$${item.precio.toFixed(2)}</td>
+                <td>$${item.total.toFixed(2)}</td>
+                <td><button class="btn-quitar" onclick="quitarDelCarrito(${indice})">❌</button></td>
             </tr>
             `).join('')}
         </table>
@@ -296,44 +312,115 @@ function actualizarCarrito(){
 }
 
 // ==============================================
-// GUARDAR COMPRA Y GENERAR FACTURA
+// GUARDAR COMPRA Y PREPARAR AMBAS FACTURAS
 // ==============================================
-async function generarFactura(){
-    if(carrito.length === 0) return alert('Agrega materiales primero');
+async function generarFacturas(){
+    if(carrito.length === 0) return alert('Agrega al menos una pesada primero');
 
+    const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
+    const fecha = new Date().toLocaleDateString('es-EC');
+
+    facturaActual = {
+        fecha: fecha,
+        total_general: totalGeneral,
+        detalles: [...carrito]
+    };
+
+    // Guardar en la base de datos
+    await supabaseCliente.from('facturas').insert([facturaActual]);
+
+    // Mostrar primero la factura del cliente
+    mostrarCliente();
+
+    // Mostrar los botones para cambiar
+    document.getElementById('btnVerDetallada').style.display = 'inline-block';
+    document.getElementById('btnVerCliente').style.display = 'inline-block';
+
+    document.getElementById("ventanaFactura").style.display = "flex";
+    carrito = [];
+    actualizarCarrito();
+    
+    await cargarHistorialYTotales();
+}
+
+// ==============================================
+// FACTURA SIMPLE PARA EL CLIENTE
+// ==============================================
+function mostrarCliente(){
+    if(!facturaActual) return;
+
+    // Agrupar totales por material para el cliente
     let agrupado = {};
-    carrito.forEach(item => {
-        agrupado[item.nombre] = agrupado[item.nombre] || { ...item, cantidad:0, total:0 };
+    facturaActual.detalles.forEach(item => {
+        if(!agrupado[item.nombre]){
+            agrupado[item.nombre] = {
+                cantidad: 0,
+                unidad: item.unidad,
+                precio: item.precio,
+                total: 0
+            };
+        }
         agrupado[item.nombre].cantidad += item.cantidad;
         agrupado[item.nombre].total += item.total;
     });
     const listaAgrupada = Object.values(agrupado);
-    const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
-    const fecha = new Date().toLocaleDateString('es-EC');
 
-    // Guardar factura en la base de datos
-    await supabaseCliente.from('facturas').insert([{
-        fecha: fecha,
-        total_general: totalGeneral,
-        detalles: listaAgrupada
-    }]);
-
-    // Mostrar factura
     document.getElementById("contenidoFactura").innerHTML = `
-        <h2 style="text-align:center; font-size:20px; margin-bottom:18px;">FACTURA DE RECIBO</h2>
+        <h2 style="text-align:center; font-size:20px; margin-bottom:18px;">RECIBO DE PAGO - CLIENTE</h2>
         <hr style="border:1px dashed #ccc; margin:12px 0;">
-        <p style="font-size:15px;"><strong>Fecha:</strong> ${fecha}</p>
+        <p style="font-size:15px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
         <p style="font-size:15px;"><strong>Recicladora Alexander</strong></p>
         <hr style="border:1px dashed #ccc; margin:18px 0;">
 
         <table class="tabla-factura">
             <tr>
                 <th>Material</th>
-                <th>Cantidad</th>
+                <th>Peso Total</th>
+                <th>Precio Unitario</th>
+                <th>Total</th>
+            </tr>
+            ${listaAgrupada.map(i => `
+            <tr>
+                <td>${i.nombre}</td>
+                <td>${i.cantidad.toFixed(1)} ${i.unidad}</td>
+                <td>$${i.precio.toFixed(2)}</td>
+                <td>$${i.total.toFixed(2)}</td>
+            </tr>
+            `).join('')}
+        </table>
+
+        <div class="desglose">
+            <div class="total-final">Total a Recibir: $${facturaActual.total_general.toFixed(2)}</div>
+        </div>
+
+        <p style="text-align:center; font-size:13px; margin-top:20px;">
+            Gracias por su confianza<br>
+            Portoviejo - Manabí - Ecuador
+        </p>
+    `;
+}
+
+// ==============================================
+// FACTURA DETALLADA PARA ELLOS
+// ==============================================
+function mostrarDetallada(){
+    if(!facturaActual) return;
+
+    document.getElementById("contenidoFactura").innerHTML = `
+        <h2 style="text-align:center; font-size:20px; margin-bottom:18px;">FACTURA DETALLADA - CONTROL INTERNO</h2>
+        <hr style="border:1px dashed #ccc; margin:12px 0;">
+        <p style="font-size:15px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
+        <p style="font-size:15px;"><strong>Recicladora Alexander</strong></p>
+        <hr style="border:1px dashed #ccc; margin:18px 0;">
+
+        <table class="tabla-factura">
+            <tr>
+                <th>Material</th>
+                <th>Peso por pesada</th>
                 <th>Precio Unitario</th>
                 <th>Subtotal</th>
             </tr>
-            ${listaAgrupada.map(i => `
+            ${facturaActual.detalles.map(i => `
             <tr>
                 <td>${i.nombre}</td>
                 <td>${i.cantidad} ${i.unidad}</td>
@@ -344,31 +431,22 @@ async function generarFactura(){
         </table>
 
         <div class="desglose">
-            <div>Subtotal: $${totalGeneral.toFixed(2)}</div>
+            <div>Subtotal: $${facturaActual.total_general.toFixed(2)}</div>
             <div>IVA 0% (Sector Reciclaje): $0.00</div>
-            <div class="total-final">Total a Pagar: $${totalGeneral.toFixed(2)}</div>
+            <div class="total-final">Total de la Compra: $${facturaActual.total_general.toFixed(2)}</div>
         </div>
-
-        <p style="text-align:center; font-size:13px; margin-top:20px;">
-            Gracias por su confianza<br>
-            Portoviejo - Manabí - Ecuador
-        </p>
     `;
-
-    document.getElementById("ventanaFactura").style.display = "flex";
-    carrito = [];
-    actualizarCarrito();
-    
-    // Actualizar historial y totales acumulados
-    await cargarHistorialYTotales();
 }
 
 function cerrarVentana(){
     document.getElementById("ventanaFactura").style.display = "none";
+    facturaActual = null;
+    document.getElementById('btnVerDetallada').style.display = 'none';
+    document.getElementById('btnVerCliente').style.display = 'none';
 }
 
 // ==============================================
-// CARGAR HISTORIAL Y TOTALES ACUMULADOS
+// CARGAR HISTORIAL Y TOTALES
 // ==============================================
 async function cargarHistorialYTotales(){
     try {
@@ -379,46 +457,23 @@ async function cargarHistorialYTotales(){
 
         if(error) throw error;
 
-        // 1. Calcular totales acumulados por material
-        const totalesMateriales = {};
+        totalesAcumulados = {};
         facturas.forEach(factura => {
             factura.detalles.forEach(item => {
-                if(!totalesMateriales[item.nombre]){
-                    totalesMateriales[item.nombre] = {
+                if(!totalesAcumulados[item.nombre]){
+                    totalesAcumulados[item.nombre] = {
                         cantidadTotal: 0,
                         unidad: item.unidad,
                         montoTotal: 0
                     };
                 }
-                totalesMateriales[item.nombre].cantidadTotal += item.cantidad;
-                totalesMateriales[item.nombre].montoTotal += item.total;
+                totalesAcumulados[item.nombre].cantidadTotal += item.cantidad;
+                totalesAcumulados[item.nombre].montoTotal += item.total;
             });
         });
 
-        // Mostrar totales acumulados
-        const listaTotales = document.getElementById('listaTotales');
-        if(Object.keys(totalesMateriales).length === 0){
-            listaTotales.innerHTML = `<p style="text-align:center; color:#666; padding:12px;">Aún no hay compras registradas</p>`;
-        } else {
-            listaTotales.innerHTML = `
-            <table class="tabla-resumen">
-                <tr>
-                    <th>Material</th>
-                    <th>Cantidad Total Comprada</th>
-                    <th>Monto Total Invertido</th>
-                </tr>
-                ${Object.entries(totalesMateriales).map(([nombre, datos]) => `
-                <tr>
-                    <td>${nombre}</td>
-                    <td>${datos.cantidadTotal.toFixed(1)} ${datos.unidad}</td>
-                    <td>$${datos.montoTotal.toFixed(2)}</td>
-                </tr>
-                `).join('')}
-            </table>
-            `;
-        }
+        actualizarVistaTotales();
 
-        // 2. Mostrar historial de compras
         const listaHistorial = document.getElementById('listaHistorial');
         if(facturas.length === 0){
             listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:12px;">Aún no hay compras guardadas</p>`;
@@ -428,13 +483,16 @@ async function cargarHistorialYTotales(){
                 <tr>
                     <th>Fecha</th>
                     <th>Total de la Compra</th>
-                    <th>Detalles</th>
+                    <th>Facturas</th>
                 </tr>
                 ${facturas.map(f => `
                 <tr>
                     <td>${f.fecha}</td>
                     <td>$${f.total_general.toFixed(2)}</td>
-                    <td><button class="btn-ver" onclick='verDetalleFactura(${JSON.stringify(f).replace(/'/g, "&#39;")})'>Ver Detalle</button></td>
+                    <td>
+                        <button class="btn-cliente" style="padding:5px 8px; font-size:12px;" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "cliente")'>Cliente</button>
+                        <button class="btn-detallada" style="padding:5px 8px; font-size:12px;" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "detallada")'>Detallada</button>
+                    </td>
                 </tr>
                 `).join('')}
             </table>
@@ -442,45 +500,57 @@ async function cargarHistorialYTotales(){
         }
 
     } catch (err) {
-        console.error("Error al cargar historial: ", err);
+        console.error("Error al cargar: ", err);
     }
 }
 
 // ==============================================
-// VER DETALLE DE UNA FACTURA ANTERIOR
+// VER FACTURAS GUARDADAS DEL HISTORIAL
 // ==============================================
-function verDetalleFactura(factura){
-    document.getElementById("contenidoFactura").innerHTML = `
-        <h2 style="text-align:center; font-size:20px; margin-bottom:18px;">DETALLE DE COMPRA</h2>
-        <hr style="border:1px dashed #ccc; margin:12px 0;">
-        <p style="font-size:15px;"><strong>Fecha:</strong> ${factura.fecha}</p>
-        <p style="font-size:15px;"><strong>Recicladora Alexander</strong></p>
-        <hr style="border:1px dashed #ccc; margin:18px 0;">
+function verFacturaGuardada(factura, tipo){
+    facturaActual = factura;
+    document.getElementById('btnVerDetallada').style.display = 'inline-block';
+    document.getElementById('btnVerCliente').style.display = 'inline-block';
+    
+    if(tipo === "cliente") mostrarCliente();
+    else mostrarDetallada();
+    
+    document.getElementById("ventanaFactura").style.display = "flex";
+}
 
-        <table class="tabla-factura">
+// ==============================================
+// REINICIAR TOTALES
+// ==============================================
+function reiniciarTotales(){
+    if(confirm("⚠️ ¿Seguro que quieres reiniciar los totales acumulados?\n\n✅ Se limpiarán las sumas para empezar de cero.\n❌ No se borrarán materiales ni el historial de facturas.")){
+        totalesAcumulados = {};
+        actualizarVistaTotales();
+        alert("✅ Totales reiniciados.");
+    }
+}
+
+function actualizarVistaTotales(){
+    const listaTotales = document.getElementById('listaTotales');
+    if(Object.keys(totalesAcumulados).length === 0){
+        listaTotales.innerHTML = `<p style="text-align:center; color:#666; padding:12px;">Aún no hay compras registradas</p>`;
+    } else {
+        listaTotales.innerHTML = `
+        <table class="tabla-resumen">
             <tr>
                 <th>Material</th>
-                <th>Cantidad</th>
-                <th>Precio Unitario</th>
-                <th>Subtotal</th>
+                <th>Peso Total Comprado</th>
+                <th>Monto Total Invertido</th>
             </tr>
-            ${factura.detalles.map(i => `
+            ${Object.entries(totalesAcumulados).map(([nombre, datos]) => `
             <tr>
-                <td>${i.nombre}</td>
-                <td>${i.cantidad} ${i.unidad}</td>
-                <td>$${i.precio.toFixed(2)}</td>
-                <td>$${i.total.toFixed(2)}</td>
+                <td>${nombre}</td>
+                <td>${datos.cantidadTotal.toFixed(1)} ${datos.unidad}</td>
+                <td>$${datos.montoTotal.toFixed(2)}</td>
             </tr>
             `).join('')}
         </table>
-
-        <div class="desglose">
-            <div>Subtotal: $${factura.total_general.toFixed(2)}</div>
-            <div>IVA 0% (Sector Reciclaje): $0.00</div>
-            <div class="total-final">Total Pagado: $${factura.total_general.toFixed(2)}</div>
-        </div>
-    `;
-    document.getElementById("ventanaFactura").style.display = "flex";
+        `;
+    }
 }
 </script>
 </body>
