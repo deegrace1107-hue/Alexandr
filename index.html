@@ -11,6 +11,7 @@
         .container { max-width: 100%; margin: 0 auto; background: #fff; padding: 12px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
         h1 { font-size: 18px; text-align: center; color: #2e7d32; margin-bottom: 12px; font-weight: 700; }
         h2 { font-size: 15px; color: #2e7d32; margin-bottom: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        h3 { font-size: 14px; color: #1565c0; margin: 10px 0 6px; padding-left: 4px; border-left: 3px solid #42a5f5; }
         .section { margin-bottom: 14px; padding: 10px; border: 1px solid #c8e6c9; border-radius: 8px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin-bottom: 8px; }
         input, select, button { padding: 7px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; width: 100%; }
@@ -32,6 +33,7 @@
         table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 450px; }
         th, td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: center; vertical-align: middle; }
         th { background-color: #e8f5e9; color: #1b5e20; font-weight: 600; }
+        .fila-total-dia { background-color: #e8f5e9; font-weight: 600; color: #1b5e20; }
         .fila-total-general { background-color: #e3f2fd; font-weight: 700; color: #0d47a1; font-size: 13px; }
         .total { text-align: right; font-size: 15px; font-weight: 700; color: #1b5e20; margin: 8px 0; padding-right: 4px; }
         .resumen { background-color: #f1f8e9; border-color: #8bc34a; }
@@ -42,9 +44,11 @@
         .tabla-resumen th, .tabla-resumen td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: right; }
         .tabla-resumen th:first-child, .tabla-resumen td:first-child { text-align: left; }
         .tabla-resumen th { background: #e8f5e9; font-weight: 600; }
+        .resumen-dia { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #90caf9; }
         #ventanaFactura { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center; padding: 8px; }
         .caja-factura { background: white; width: 100%; max-width: 500px; padding: 20px; border-radius: 10px; position: relative; max-height: 95vh; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .btn-cerrar { position: absolute; top: 6px; right: 10px; font-size: 24px; border: none; background: none; cursor: pointer; color: #666; font-weight: 400; }
+        .logo-factura { display: block; max-width: 140px; margin: 0 auto 12px; }
         .tabla-factura { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
         .tabla-factura th, .tabla-factura td { border: 1px solid #444; padding: 8px 5px; text-align: right; }
         .tabla-factura th:first-child, .tabla-factura td:first-child { text-align: left; }
@@ -57,12 +61,14 @@
             .container { padding: 8px; border-radius: 8px; }
             h1 { font-size: 16px; }
             h2 { font-size: 14px; flex-direction: column; gap: 4px; }
+            h3 { font-size: 13px; }
             .grid { grid-template-columns: 1fr; }
             table { min-width: 400px; font-size: 11px; }
             th, td { padding: 5px 3px; }
-            .fila-total-general { font-size: 12px; }
+            .fila-total-dia, .fila-total-general { font-size: 12px; }
             .total { font-size: 14px; }
             .caja-factura { padding: 15px; }
+            .logo-factura { max-width: 120px; }
             .btn-cerrar { font-size: 20px; }
         }
         @media print {
@@ -70,6 +76,7 @@
             .container, .btn-cerrar, button, .aviso, .section { display: none !important; }
             #ventanaFactura { position: static; display: block !important; background: white; width: 100%; height: auto; padding: 0; }
             .caja-factura { width: 100%; max-width: 100%; padding: 12px; box-shadow: none; border: none; border-radius: 0; }
+            .logo-factura { max-width: 150px; }
             .tabla-factura { font-size: 15px; }
             .tabla-factura th, .tabla-factura td { padding: 10px 6px; }
             .desglose { font-size: 15px; }
@@ -82,7 +89,7 @@
 
 <div class="container">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso">✅ Conectado a tu base en la nube</div>
+    <div class="aviso">✅ Conectado a tu base en la nube | Ver totales por día</div>
 
     <div class="section">
         <h2>Configurar Materiales</h2>
@@ -124,7 +131,7 @@
     </div>
 
     <div class="section resumen">
-        <h2>Resumen de Compra</h2>
+        <h2>Resumen de Compra Actual</h2>
         <div id="listaCompra">
             <p style="text-align:center; color:#666; padding:10px;">Sin pesadas agregadas</p>
         </div>
@@ -134,10 +141,10 @@
     </div>
 
     <div class="section totales-generales">
-        <h2>📊 TOTALES ACUMULADOS POR MATERIAL</h2>
-        <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Al despachar, elimina solo el total de ese material</p>
-        <div id="listaTotales">
-            <p style="text-align:center; color:#666; padding:10px;">Sin compras registradas</p>
+        <h2>📊 TOTALES ACUMULADOS POR DÍA</h2>
+        <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Cada día se muestra por separado; elimina solo el total del material que despaches</p>
+        <div id="listaTotalesPorDia">
+            <p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>
         </div>
     </div>
 
@@ -168,10 +175,10 @@
 // ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
-    
+
 let supabaseCliente;
 let carrito = [];
-let totalesAcumulados = {};
+let totalesPorDia = {};
 let facturaActual = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -301,12 +308,13 @@ function mostrarCliente(){
     if(!facturaActual) return;
     let agrupado = {};
     facturaActual.detalles.forEach(item => {
-        if(!agrupado[item.nombre]) agrupado[item.nombre] = { nombre: item.nombre, cantidad:0, unidad:item.unidad, precio:item.precio, total:0 };
+        if(!agrupado[item.nombre]) agrupado[item.nombre] = { nombre: item.nombre, cantidad:0, unidad: item.unidad, precio: item.precio, total:0 };
         agrupado[item.nombre].cantidad += item.cantidad;
         agrupado[item.nombre].total += item.total;
     });
     const lista = Object.values(agrupado);
     document.getElementById("contenidoFactura").innerHTML = `
+        <img src="https://i.imgur.com/9ZbX7Lk.png" alt="Recicladora Alexander" class="logo-factura">
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">RECIBO DE PAGO - CLIENTE</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
@@ -324,6 +332,7 @@ function mostrarCliente(){
 function mostrarDetallada(){
     if(!facturaActual) return;
     document.getElementById("contenidoFactura").innerHTML = `
+        <img src="https://i.imgur.com/9ZbX7Lk.png" alt="Recicladora Alexander" class="logo-factura">
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">FACTURA DETALLADA - CONTROL</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
@@ -352,13 +361,27 @@ async function cargarHistorialYTotales(){
     try {
         const { data: facturas, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false});
         if(error) throw error;
-        totalesAcumulados = {};
-        facturas.forEach(f => f.detalles.forEach(item => {
-            if(!totalesAcumulados[item.nombre]) totalesAcumulados[item.nombre] = {cantidadTotal:0, unidad:item.unidad, montoTotal:0};
-            totalesAcumulados[item.nombre].cantidadTotal += item.cantidad;
-            totalesAcumulados[item.nombre].montoTotal += item.total;
-        }));
-        actualizarVistaTotales();
+
+        totalesPorDia = {};
+        facturas.forEach(factura => {
+            const fecha = factura.fecha;
+            if(!totalesPorDia[fecha]) totalesPorDia[fecha] = {};
+            
+            factura.detalles.forEach(item => {
+                if(!totalesPorDia[fecha][item.nombre]){
+                    totalesPorDia[fecha][item.nombre] = {
+                        cantidadTotal: 0,
+                        unidad: item.unidad,
+                        montoTotal: 0
+                    };
+                }
+                totalesPorDia[fecha][item.nombre].cantidadTotal += item.cantidad;
+                totalesPorDia[fecha][item.nombre].montoTotal += item.total;
+            });
+        });
+
+        actualizarVistaTotalesPorDia();
+
         const listaHistorial = document.getElementById('listaHistorial');
         if(facturas.length === 0){
             listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas</p>`;
@@ -382,42 +405,62 @@ async function cargarHistorialYTotales(){
     } catch (err) { console.error("Error al cargar: ", err); }
 }
 
-function eliminarTotalMaterial(nombre){
-    if(confirm(`¿Eliminar total de ${nombre}?\nQuedará en cero, los demás no cambian.`)){
-        delete totalesAcumulados[nombre];
-        actualizarVistaTotales();
-        alert(`✅ Total de ${nombre} eliminado`);
+function eliminarTotalMaterialPorDia(fecha, nombreMaterial){
+    if(confirm(`⚠️ ¿Eliminar el total de ${nombreMaterial} del día ${fecha}?\nQuedará en cero para ese día, el resto no cambia.`)){
+        delete totalesPorDia[fecha][nombreMaterial];
+        if(Object.keys(totalesPorDia[fecha]).length === 0) delete totalesPorDia[fecha];
+        actualizarVistaTotalesPorDia();
+        alert(`✅ Total de ${nombreMaterial} eliminado del día ${fecha}`);
     }
 }
 
-function actualizarVistaTotales(){
-    const lista = document.getElementById('listaTotales');
-    const materiales = Object.entries(totalesAcumulados);
-    
-    if(materiales.length === 0){
-        lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras registradas</p>`;
+function actualizarVistaTotalesPorDia(){
+    const lista = document.getElementById('listaTotalesPorDia');
+    const fechas = Object.keys(totalesPorDia).sort().reverse();
+
+    if(fechas.length === 0){
+        lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>`;
     } else {
-        // Calculamos el total general de todo el dinero invertido
-        const totalGeneralInvertido = Object.values(totalesAcumulados).reduce((s, d) => s + d.montoTotal, 0);
-        
-        lista.innerHTML = `
+        let html = '';
+        let totalGeneralInvertido = 0;
+
+        fechas.forEach(fecha => {
+            const materiales = Object.entries(totalesPorDia[fecha]);
+            const totalDia = Object.values(totalesPorDia[fecha]).reduce((s, d) => s + d.montoTotal, 0);
+            totalGeneralInvertido += totalDia;
+
+            html += `
+            <div class="resumen-dia">
+                <h3>📅 Día: ${fecha}</h3>
+                <table class="tabla-resumen">
+                    <tr><th>Material</th><th>Peso Total</th><th>Monto Total</th><th>Acción</th></tr>
+                    ${materiales.map(([n, d]) => `
+                    <tr>
+                        <td>${n}</td>
+                        <td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td>
+                        <td>$${d.montoTotal.toFixed(2)}</td>
+                        <td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterialPorDia('${fecha}', '${n}')">🔄 Eliminar Total</button></td>
+                    </tr>
+                    `).join('')}
+                    <tr class="fila-total-dia">
+                        <td colspan="2">💵 Total del día</td>
+                        <td colspan="2">$${totalDia.toFixed(2)}</td>
+                    </tr>
+                </table>
+            </div>
+            `;
+        });
+
+        html += `
         <table class="tabla-resumen">
-            <tr><th>Material</th><th>Peso Total</th><th>Monto Total Invertido</th><th>Acción</th></tr>
-            ${materiales.map(([n, d]) => `
-            <tr>
-                <td>${n}</td>
-                <td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td>
-                <td>$${d.montoTotal.toFixed(2)}</td>
-                <td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterial('${n}')">🔄 Eliminar Total</button></td>
-            </tr>
-            `).join('')}
-            <!-- Fila nueva con el total general -->
             <tr class="fila-total-general">
-                <td colspan="2">💰 TOTAL GENERAL INVERTIDO</td>
+                <td colspan="2">💰 TOTAL GENERAL INVERTIDO (TODOS LOS DÍAS)</td>
                 <td colspan="2">$${totalGeneralInvertido.toFixed(2)}</td>
             </tr>
         </table>
         `;
+
+        lista.innerHTML = html;
     }
 }
 
