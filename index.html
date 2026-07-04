@@ -32,6 +32,7 @@
         table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 450px; }
         th, td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: center; vertical-align: middle; }
         th { background-color: #e8f5e9; color: #1b5e20; font-weight: 600; }
+        .fila-total-general { background-color: #e3f2fd; font-weight: 700; color: #0d47a1; font-size: 13px; }
         .total { text-align: right; font-size: 15px; font-weight: 700; color: #1b5e20; margin: 8px 0; padding-right: 4px; }
         .resumen { background-color: #f1f8e9; border-color: #8bc34a; }
         .historial { background-color: #fff8e1; border-color: #ffb74d; }
@@ -59,6 +60,7 @@
             .grid { grid-template-columns: 1fr; }
             table { min-width: 400px; font-size: 11px; }
             th, td { padding: 5px 3px; }
+            .fila-total-general { font-size: 12px; }
             .total { font-size: 14px; }
             .caja-factura { padding: 15px; }
             .btn-cerrar { font-size: 20px; }
@@ -390,13 +392,18 @@ function eliminarTotalMaterial(nombre){
 
 function actualizarVistaTotales(){
     const lista = document.getElementById('listaTotales');
-    if(Object.keys(totalesAcumulados).length === 0){
+    const materiales = Object.entries(totalesAcumulados);
+    
+    if(materiales.length === 0){
         lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras registradas</p>`;
     } else {
+        // Calculamos el total general de todo el dinero invertido
+        const totalGeneralInvertido = Object.values(totalesAcumulados).reduce((s, d) => s + d.montoTotal, 0);
+        
         lista.innerHTML = `
         <table class="tabla-resumen">
-            <tr><th>Material</th><th>Peso Total</th><th>Monto Total</th><th>Acción</th></tr>
-            ${Object.entries(totalesAcumulados).map(([n, d]) => `
+            <tr><th>Material</th><th>Peso Total</th><th>Monto Total Invertido</th><th>Acción</th></tr>
+            ${materiales.map(([n, d]) => `
             <tr>
                 <td>${n}</td>
                 <td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td>
@@ -404,6 +411,11 @@ function actualizarVistaTotales(){
                 <td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterial('${n}')">🔄 Eliminar Total</button></td>
             </tr>
             `).join('')}
+            <!-- Fila nueva con el total general -->
+            <tr class="fila-total-general">
+                <td colspan="2">💰 TOTAL GENERAL INVERTIDO</td>
+                <td colspan="2">$${totalGeneralInvertido.toFixed(2)}</td>
+            </tr>
         </table>
         `;
     }
