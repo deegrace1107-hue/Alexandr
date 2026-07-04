@@ -96,7 +96,8 @@
 <body>
 
 <div class="container">
-    <img src="https://i.postimg.cc/0y2kfZtY/logo-recicladora.png" alt="Recicladora Alexander" class="logo-principal">
+    <!-- LOGO CON ENLACE PERMANENTE -->
+    <img src="https://i.imgur.com/KzZxqLd.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
     <div class="aviso">✅ Conectado a tu base en la nube | Búsqueda por fecha</div>
 
@@ -151,7 +152,6 @@
 
     <div class="section totales-generales">
         <h2>📊 TOTALES ACUMULADOS POR DÍA</h2>
-        <!-- BUSCADOR DE FECHAS -->
         <div class="buscador">
             <input type="text" id="fechaBusqueda" placeholder="Buscar por fecha: dd/mm/aaaa">
             <button class="btn-buscar" onclick="buscarPorFecha()">🔍 Buscar</button>
@@ -194,7 +194,7 @@ const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 let supabaseCliente;
 let carrito = [];
 let totalesPorDia = {};
-let totalesOriginales = {}; // Guardamos todos los datos para buscar
+let totalesOriginales = {};
 let facturaActual = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -330,7 +330,7 @@ function mostrarCliente(){
     });
     const lista = Object.values(agrupado);
     document.getElementById("contenidoFactura").innerHTML = `
-        <img src="https://i.postimg.cc/0y2kfZtY/logo-recicladora.png" alt="Recicladora Alexander" class="logo-factura">
+        <img src="https://i.imgur.com/KzZxqLd.png" alt="Recicladora Alexander" class="logo-factura">
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">RECIBO DE PAGO - CLIENTE</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
@@ -348,7 +348,7 @@ function mostrarCliente(){
 function mostrarDetallada(){
     if(!facturaActual) return;
     document.getElementById("contenidoFactura").innerHTML = `
-        <img src="https://i.postimg.cc/0y2kfZtY/logo-recicladora.png" alt="Recicladora Alexander" class="logo-factura">
+        <img src="https://i.imgur.com/KzZxqLd.png" alt="Recicladora Alexander" class="logo-factura">
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">FACTURA DETALLADA - CONTROL</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
@@ -396,7 +396,7 @@ async function cargarHistorialYTotales(){
             });
         });
 
-        totalesOriginales = {...totalesPorDia}; // Guardamos todos los datos completos
+        totalesOriginales = {...totalesPorDia};
         actualizarVistaTotalesPorDia();
 
         const listaHistorial = document.getElementById('listaHistorial');
@@ -422,7 +422,6 @@ async function cargarHistorialYTotales(){
     } catch (err) { console.error("Error al cargar: ", err); }
 }
 
-// BUSCAR POR FECHA
 function buscarPorFecha(){
     const fechaBuscada = document.getElementById('fechaBusqueda').value.trim();
     if(!fechaBuscada) return alert('Escribe la fecha que quieres ver');
@@ -436,7 +435,6 @@ function buscarPorFecha(){
     }
 }
 
-// VER TODOS LOS DÍAS DE NUEVO
 function verTodosLosDias(){
     totalesPorDia = {...totalesOriginales};
     document.getElementById('fechaBusqueda').value = '';
@@ -447,7 +445,6 @@ function eliminarTotalMaterialPorDia(fecha, nombreMaterial){
     if(confirm(`⚠️ ¿Eliminar el total de ${nombreMaterial} del día ${fecha}?\nQuedará en cero para ese día, el resto no cambia.`)){
         delete totalesPorDia[fecha][nombreMaterial];
         if(Object.keys(totalesPorDia[fecha]).length === 0) delete totalesPorDia[fecha];
-        // También actualizamos la copia original
         if(totalesOriginales[fecha]) delete totalesOriginales[fecha][nombreMaterial];
         if(Object.keys(totalesOriginales[fecha]).length === 0) delete totalesOriginales[fecha];
         actualizarVistaTotalesPorDia();
