@@ -96,8 +96,8 @@
 <body>
 
 <div class="container">
-    <!-- LOGO CON ENLACE PERMANENTE -->
-    <img src="https://i.imgur.com/KzZxqLd.png" alt="Recicladora Alexander" class="logo-principal">
+    <!-- ✅ RUTA DIRECTA A TU LOGO -->
+    <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
     <div class="aviso">✅ Conectado a tu base en la nube | Búsqueda por fecha</div>
 
@@ -330,7 +330,7 @@ function mostrarCliente(){
     });
     const lista = Object.values(agrupado);
     document.getElementById("contenidoFactura").innerHTML = `
-        <img src="https://i.imgur.com/KzZxqLd.png" alt="Recicladora Alexander" class="logo-factura">
+        <img src="logo.png" alt="Recicladora Alexander" class="logo-factura">
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">RECIBO DE PAGO - CLIENTE</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
@@ -348,7 +348,7 @@ function mostrarCliente(){
 function mostrarDetallada(){
     if(!facturaActual) return;
     document.getElementById("contenidoFactura").innerHTML = `
-        <img src="https://i.imgur.com/KzZxqLd.png" alt="Recicladora Alexander" class="logo-factura">
+        <img src="logo.png" alt="Recicladora Alexander" class="logo-factura">
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">FACTURA DETALLADA - CONTROL</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
