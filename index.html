@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recicladora Alexander</title>
-    <!-- Configuración para funcionar como App -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2e7d32">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0"></script>
@@ -33,12 +32,23 @@
         .btn-reiniciar-individual:hover { background-color: #fb8c00; }
         .btn-danger { background-color: #d32f2f; }
         .btn-danger:hover { background-color: #b71c1c; }
-        .btn-cliente { background-color: #43a047; margin: 4px 0; }
+        .btn-cliente, .btn-detallada { 
+            padding: 5px 4px !important; 
+            font-size: 11px !important; 
+            min-width: 65px; 
+            margin: 2px !important;
+        }
         .btn-cliente:hover { background-color: #388e3c; }
-        .btn-detallada { background-color: #1976d2; margin: 4px 0; }
         .btn-detallada:hover { background-color: #1565c0; }
-        .table-wrap { overflow-x: auto; margin-top: 6px; border-radius: 6px; border: 1px solid #e0e0e0; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 450px; }
+        .table-wrap { 
+            overflow-x: auto !important; 
+            -webkit-overflow-scrolling: touch !important; 
+            width: 100% !important; 
+            margin: 6px 0 !important; 
+            border-radius: 6px; 
+            border: 1px solid #e0e0e0; 
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 500px !important; }
         th, td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: center; vertical-align: middle; }
         th { background-color: #e8f5e9; color: #1b5e20; font-weight: 600; }
         .fila-total-dia { background-color: #e8f5e9; font-weight: 600; color: #1b5e20; }
@@ -53,42 +63,12 @@
         .tabla-resumen th:first-child, .tabla-resumen td:first-child { text-align: left; }
         .tabla-resumen th { background: #e8f5e9; font-weight: 600; }
         .resumen-dia { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #90caf9; }
-
-        /* Estilos nuevos para el historial desplegable */
-        .item-fecha {
-            border: 1px solid #ffcc80;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            background: #fff;
-        }
-        .titulo-fecha {
-            padding: 10px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 600;
-            color: #e65100;
-            background: #fff3e0;
-            border-radius: 6px;
-        }
-        .titulo-fecha:hover {
-            background: #ffe0b2;
-        }
-        .flecha {
-            transition: transform 0.3s;
-        }
-        .contenido-fechas {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-            padding: 0 10px;
-        }
-        .contenido-fechas.abierto {
-            max-height: 2000px;
-            padding: 10px;
-        }
-
+        .item-fecha { border: 1px solid #ffcc80; border-radius: 6px; margin-bottom: 8px; background: #fff; }
+        .titulo-fecha { padding: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #e65100; background: #fff3e0; border-radius: 6px; }
+        .titulo-fecha:hover { background: #ffe0b2; }
+        .flecha { transition: transform 0.3s; }
+        .contenido-fechas { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 10px; }
+        .contenido-fechas.abierto { max-height: 2000px; padding: 10px; }
         #ventanaFactura { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center; padding: 8px; }
         .caja-factura { background: white; width: 100%; max-width: 500px; padding: 20px; border-radius: 10px; position: relative; max-height: 95vh; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .btn-cerrar { position: absolute; top: 6px; right: 10px; font-size: 24px; border: none; background: none; cursor: pointer; color: #666; font-weight: 400; }
@@ -100,6 +80,11 @@
         .desglose { margin-top: 14px; text-align: right; font-size: 13px; padding-right: 4px; }
         .desglose div { margin: 5px 0; padding: 3px 0; }
         .total-final { font-size: 16px; font-weight: 700; color: #1b5e20; border-top: 2px solid #2e7d32; padding-top: 6px; margin-top: 4px; }
+        #btnImprimir, #btnVerDetallada, #btnVerCliente, .btn-danger {
+            padding: 7px 10px !important;
+            font-size: 13px !important;
+            margin: 2px !important;
+        }
         @media (max-width: 480px) {
             body { padding: 5px; font-size: 12px; }
             .container { padding: 8px; border-radius: 8px; }
@@ -110,7 +95,7 @@
             h2 { font-size: 14px; flex-direction: column; gap: 4px; }
             h3 { font-size: 13px; }
             .grid { grid-template-columns: 1fr; }
-            table { min-width: 400px; font-size: 11px; }
+            table { font-size: 11px; }
             th, td { padding: 5px 3px; }
             .fila-total-dia, .fila-total-general { font-size: 12px; }
             .total { font-size: 14px; }
@@ -214,10 +199,10 @@
         <button class="btn-cerrar" onclick="cerrarVentana()">×</button>
         <div id="contenidoFactura"></div>
         <div style="text-align:center; margin-top:16px;">
-            <button id="btnImprimir" onclick="window.print()" style="font-size:14px; padding:8px 16px;">🖨️ Imprimir</button>
-            <button class="btn-detallada" id="btnVerDetallada" style="font-size:14px; padding:8px 16px; display:none;" onclick="mostrarDetallada()">📋 Detallada</button>
-            <button class="btn-cliente" id="btnVerCliente" style="font-size:14px; padding:8px 16px; display:none;" onclick="mostrarCliente()">🧾 Cliente</button>
-            <button class="btn-danger" onclick="cerrarVentana()" style="font-size:14px; padding:8px 16px;">Cerrar</button>
+            <button id="btnImprimir" onclick="window.print()">🖨️ Imprimir</button>
+            <button class="btn-detallada" id="btnVerDetallada" style="display:none;" onclick="mostrarDetallada()">📋 Detallada</button>
+            <button class="btn-cliente" id="btnVerCliente" style="display:none;" onclick="mostrarCliente()">🧾 Cliente</button>
+            <button class="btn-danger" onclick="cerrarVentana()">Cerrar</button>
         </div>
     </div>
 </div>
@@ -227,7 +212,7 @@
 // 🔑 PON TU CLAVE AQUÍ
 // ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
-const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
+const CLAVE_SUPABASE = "PEGA_AQUÍ_TU_CLAVE_COMPLETA_QUE_EMPIEZA_POR_ey...";
 
 let supabaseCliente;
 let carrito = [];
@@ -460,10 +445,10 @@ async function cargarHistorialYTotales(){
                             <tr>
                                 <td>$${f.total_general.toFixed(2)}</td>
                                 <td>
-                                    <button class="btn-cliente" style="padding:4px 6px; font-size:11px;" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "cliente")'>Ver</button>
+                                    <button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "cliente")'>Ver</button>
                                 </td>
                                 <td>
-                                    <button class="btn-detallada" style="padding:4px 6px; font-size:11px;" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "detallada")'>Ver</button>
+                                    <button class="btn-detallada" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "detallada")'>Ver</button>
                                 </td>
                             </tr>
                             `).join('')}
@@ -566,6 +551,7 @@ function actualizarVistaTotalesPorDia(){
         lista.innerHTML = html;
     }
 }
+
 function verFacturaGuardada(factura, tipo){
     facturaActual = factura;
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
