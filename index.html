@@ -28,7 +28,7 @@
         .btn-ver-todos:hover { background-color: #fb8c00; }
         .btn-quitar { background-color: #ef5350; padding: 4px 6px; font-size: 11px; border-radius: 4px; width: auto; }
         .btn-quitar:hover { background-color: #e53935; }
-        .btn-reiniciar-individual { background-color: #ff9800; padding: 4px 6px; font-size: 10px; border-radius: 4px; width: auto; }
+        .btn-reiniciar-individual { background-color: #ff9800; padding: 5px 4px; font-size: 11px; border-radius: 4px; width: auto; }
         .btn-reiniciar-individual:hover { background-color: #fb8c00; }
         .btn-danger { background-color: #d32f2f; }
         .btn-danger:hover { background-color: #b71c1c; }
@@ -65,7 +65,7 @@
         .tabla-resumen { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
         .tabla-resumen th, .tabla-resumen td { border: 1px solid #e0e0e0; padding: 5px 3px !important; text-align: right; }
         .tabla-resumen th:first-child, .tabla-resumen td:first-child { text-align: left; }
-        .tabla-resumen th:last-child, .tabla-resumen td:last-child { min-width: 65px !important; }
+        .tabla-resumen th:last-child, .tabla-resumen td:last-child { min-width: 75px !important; }
         .tabla-resumen th { background: #e8f5e9; font-weight: 600; }
         .resumen-dia { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #90caf9; }
         .item-fecha { border: 1px solid #ffcc80; border-radius: 6px; margin-bottom: 8px; background: #fff; }
@@ -179,13 +179,13 @@
     </div>
 
     <div class="section totales-generales">
-        <h2>📊 TOTALES ACUMULADOS POR DÍA</h2>
+        <h2>📊 TOTALES ACUMULADOS</h2>
         <div class="buscador">
             <input type="text" id="fechaBusqueda" placeholder="Buscar por fecha: dd/mm/aaaa">
             <button class="btn-buscar" onclick="buscarPorFecha()">🔍 Buscar</button>
             <button class="btn-ver-todos" onclick="verTodosLosDias()">📋 Ver Todos</button>
         </div>
-        <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Cada día se muestra por separado; elimina solo el total del material que despaches</p>
+        <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Elige ver por días o el total sumado de todos los materiales</p>
         <div id="listaTotalesPorDia">
             <p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>
         </div>
@@ -224,6 +224,7 @@ let carrito = [];
 let totalesPorDia = {};
 let totalesOriginales = {};
 let facturaActual = null;
+let vistaAgrupada = false; // Empieza mostrando por días
 
 document.addEventListener('DOMContentLoaded', async () => {
     supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
@@ -472,6 +473,11 @@ function alternarFecha(elemento) {
     flecha.textContent = contenido.classList.contains('abierto') ? '▲' : '▼';
 }
 
+function cambiarVistaTotales(modoAgrupado){
+    vistaAgrupada = modoAgrupado;
+    actualizarVistaTotalesPorDia();
+}
+
 function buscarPorFecha(){
     const fechaBuscada = document.getElementById('fechaBusqueda').value.trim();
     if(!fechaBuscada) return alert('Escribe la fecha que quieres ver');
@@ -492,13 +498,28 @@ function verTodosLosDias(){
 }
 
 function eliminarTotalMaterialPorDia(fecha, nombreMaterial){
-    if(confirm(`⚠️ ¿Eliminar el total de ${nombreMaterial} del día ${fecha}?\nQuedará en cero para ese día, el resto no cambia.`)){
+    if(confirm(`⚠️ ¿Eliminar el total de ${nombreMaterial} del día ${fecha}?`)){
         delete totalesPorDia[fecha][nombreMaterial];
         if(Object.keys(totalesPorDia[fecha]).length === 0) delete totalesPorDia[fecha];
         if(totalesOriginales[fecha]) delete totalesOriginales[fecha][nombreMaterial];
         if(Object.keys(totalesOriginales[fecha]).length === 0) delete totalesOriginales[fecha];
         actualizarVistaTotalesPorDia();
-        alert(`✅ Total de ${nombreMaterial} eliminado del día ${fecha}`);
+        alert(`✅ Eliminado del día ${fecha}`);
+    }
+}
+
+function reiniciarMaterialNuevoPeriodo(nombreMaterial){
+    if(confirm(`⚠️ ¿Segura que quieres reiniciar ${nombreMaterial}?\nSe borrará TODO lo acumulado de este material de TODOS los días, listo para empezar la nueva cuenta.`)){
+        Object.keys(totalesPorDia).forEach(fecha => {
+            delete totalesPorDia[fecha][nombreMaterial];
+            if(Object.keys(totalesPorDia[fecha]).length === 0) delete totalesPorDia[fecha];
+        });
+        Object.keys(totalesOriginales).forEach(fecha => {
+            delete totalesOriginales[fecha][nombreMaterial];
+            if(Object.keys(totalesOriginales[fecha]).length === 0) delete totalesOriginales[fecha];
+        });
+        actualizarVistaTotalesPorDia();
+        alert(`✅ Listo! ${nombreMaterial} ya está limpio para empezar 🥳`);
     }
 }
 
@@ -508,14 +529,24 @@ function actualizarVistaTotalesPorDia(){
 
     if(fechas.length === 0){
         lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>`;
-    } else {
-        let html = '';
-        let totalGeneralInvertido = 0;
+        return;
+    }
 
+    let html = '';
+
+    html += `
+    <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <button style="flex:1; min-width:120px; padding:8px;" onclick="cambiarVistaTotales(false)">📅 Ver por Días</button>
+        <button style="flex:1; min-width:120px; padding:8px;" onclick="cambiarVistaTotales(true)">📊 Ver Total Acumulado</button>
+    </div>
+    `;
+
+    if(!vistaAgrupada){
+        let totalGeneral = 0;
         fechas.forEach(fecha => {
             const materiales = Object.entries(totalesPorDia[fecha]);
             const totalDia = Object.values(totalesPorDia[fecha]).reduce((s, d) => s + d.montoTotal, 0);
-            totalGeneralInvertido += totalDia;
+            totalGeneral += totalDia;
 
             html += `
             <div class="item-fecha">
@@ -531,7 +562,7 @@ function actualizarVistaTotalesPorDia(){
                             <td>${n}</td>
                             <td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td>
                             <td>$${d.montoTotal.toFixed(2)}</td>
-                            <td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterialPorDia('${fecha}', '${n}')">🔄 Eliminar Total</button></td>
+                            <td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterialPorDia('${fecha}', '${n}')">🔄 Eliminar</button></td>
                         </tr>
                         `).join('')}
                         <tr class="fila-total-dia">
@@ -548,13 +579,62 @@ function actualizarVistaTotalesPorDia(){
         <table class="tabla-resumen">
             <tr class="fila-total-general">
                 <td colspan="2">💰 TOTAL GENERAL INVERTIDO</td>
-                <td colspan="2">$${totalGeneralInvertido.toFixed(2)}</td>
+                <td colspan="2">$${totalGeneral.toFixed(2)}</td>
             </tr>
         </table>
         `;
 
-        lista.innerHTML = html;
+    } else {
+        const acumulados = {};
+        let totalGeneral = 0;
+
+        fechas.forEach(fecha => {
+            Object.entries(totalesPorDia[fecha]).forEach(([nombre, datos]) => {
+                if(!acumulados[nombre]){
+                    acumulados[nombre] = {
+                        cantidad: 0,
+                        unidad: datos.unidad,
+                        monto: 0
+                    };
+                }
+                acumulados[nombre].cantidad += datos.cantidadTotal;
+                acumulados[nombre].monto += datos.montoTotal;
+                totalGeneral += datos.montoTotal;
+            });
+        });
+
+        html += `
+        <div class="item-fecha" style="border-color:#42a5f5;">
+            <div class="titulo-fecha" style="background:#e3f2fd; color:#0d47a1;">
+                <span>📊 TOTALES ACUMULADOS (SUMA DE TODOS LOS DÍAS)</span>
+            </div>
+            <div class="contenido-fechas abierto">
+                <table class="tabla-resumen">
+                    <tr>
+                        <th>Material</th>
+                        <th>Peso Total Sumado</th>
+                        <th>Monto Total Sumado</th>
+                        <th>Acción</th>
+                    </tr>
+                    ${Object.entries(acumulados).map(([nombre, datos]) => `
+                    <tr>
+                        <td>${nombre}</td>
+                        <td>${datos.cantidad.toFixed(1)} ${datos.unidad}</td>
+                        <td>$${datos.monto.toFixed(2)}</td>
+                        <td><button class="btn-reiniciar-individual" onclick="reiniciarMaterialNuevoPeriodo('${nombre}')">🔄 Empezar de Cero</button></td>
+                    </tr>
+                    `).join('')}
+                    <tr class="fila-total-general">
+                        <td colspan="2">💰 TOTAL GENERAL INVERTIDO</td>
+                        <td colspan="2">$${totalGeneral.toFixed(2)}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        `;
     }
+
+    lista.innerHTML = html;
 }
 
 function verFacturaGuardada(factura, tipo){
