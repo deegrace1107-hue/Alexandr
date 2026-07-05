@@ -62,6 +62,7 @@
         .historial { background-color: #fff8e1; border-color: #ffb74d; }
         .totales-generales { background-color: #e3f2fd; border-color: #42a5f5; margin-top: 10px; }
         .aviso { background: #e3f2fd; padding: 7px; border-radius: 6px; margin-bottom: 8px; text-align: center; color: #1565c0; font-size: 12px; font-weight: 500; }
+        .aviso-sin-conexion { background: #fff3cd; border: 1px solid #ffecb5; color: #856404; padding: 6px; border-radius: 6px; margin: 6px 0; font-size: 11px; text-align: center; }
         .tabla-resumen { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
         .tabla-resumen th, .tabla-resumen td { border: 1px solid #e0e0e0; padding: 5px 3px !important; text-align: right; }
         .tabla-resumen th:first-child, .tabla-resumen td:first-child { text-align: left; }
@@ -110,7 +111,7 @@
         }
         @media print {
             body { background: white; padding: 0; font-size: 14px; }
-            .container, .btn-cerrar, button, .aviso, .section, .buscador { display: none !important; }
+            .container, .btn-cerrar, button, .aviso, .section, .buscador, .aviso-sin-conexion { display: none !important; }
             #ventanaFactura { position: static; display: block !important; background: white; width: 100%; height: auto; padding: 0; }
             .caja-factura { width: 100%; max-width: 100%; padding: 12px; box-shadow: none; border: none; border-radius: 0; }
             .logo-factura { max-width: 140px; }
@@ -127,7 +128,7 @@
 <div class="container">
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso">✅ Conectado a tu base en la nube | Búsqueda por fecha</div>
+    <div class="aviso" id="estadoConexion">✅ Conectado a la nube | Trabaja sin internet: se guarda en tu celular</div>
 
     <div class="section">
         <h2>Configurar Materiales</h2>
@@ -224,14 +225,75 @@ let carrito = [];
 let totalesPorDia = {};
 let totalesOriginales = {};
 let facturaActual = null;
-let vistaAgrupada = false; // Empieza mostrando por días
+let vistaAgrupada = false;
+let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
+let sincronizando = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
     supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
+    actualizarEstadoConexion(navigator.onLine);
     await cargarMateriales();
     await cargarHistorialYTotales();
+    await sincronizarPendientes();
 });
 
+// ========== GESTIÓN DE CONEXIÓN Y SINCRONIZACIÓN ==========
+function actualizarEstadoConexion(conectado) {
+    const aviso = document.getElementById('estadoConexion');
+    if(conectado) {
+        aviso.innerHTML = "✅ Conectado a la nube | Trabaja sin internet: se guarda en tu celular";
+        aviso.style.background = "#e8f5e9";
+        aviso.style.color = "#1b5e20";
+    } else {
+        aviso.innerHTML = "⚠️ SIN INTERNET: Todo se guarda en el celular y se subirá al tener señal";
+        aviso.style.background = "#fff3cd";
+        aviso.style.color = "#856404";
+    }
+}
+
+function guardarComoPendiente(tipo, datos){
+    datosPendientes.push({ tipo, datos, fecha: new Date().toISOString() });
+    localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+    alert("✅ Guardado sin conexión: se enviará a la nube cuando haya internet");
+}
+
+async function sincronizarPendientes(){
+    if(sincronizando || datosPendientes.length === 0 || !navigator.onLine) return;
+    sincronizando = true;
+
+    try {
+        const exitosos = [];
+        for(let i = 0; i < datosPendientes.length; i++){
+            const item = datosPendientes[i];
+            if(item.tipo === 'factura'){
+                await supabaseCliente.from('facturas').insert([item.datos]);
+            } else if(item.tipo === 'material'){
+                await supabaseCliente.from('materiales').insert([item.datos]);
+            }
+            exitosos.push(i);
+        }
+
+        datosPendientes = datosPendientes.filter((_,i) => !exitosos.includes(i));
+        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+        
+        if(exitosos.length > 0){
+            alert(`✅ Se sincronizaron ${exitosos.length} registros nuevos a la nube`);
+            await cargarHistorialYTotales();
+        }
+    } catch (err) {
+        console.log("Sincronización pendiente: ", err);
+    } finally {
+        sincronizando = false;
+    }
+}
+
+window.addEventListener('online', () => {
+    actualizarEstadoConexion(true);
+    sincronizarPendientes();
+});
+window.addEventListener('offline', () => actualizarEstadoConexion(false));
+
+// ========== GESTIÓN DE MATERIALES ==========
 async function cargarMateriales(){
     try {
         const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true});
@@ -239,7 +301,10 @@ async function cargarMateriales(){
         actualizarTablaMateriales(data || []);
         actualizarSelectMateriales(data || []);
     } catch (err) {
-        alert("Error al cargar materiales: " + err.message);
+        console.log("Cargando materiales locales...");
+        const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+        actualizarTablaMateriales(locales);
+        actualizarSelectMateriales(locales);
     }
 }
 
@@ -249,31 +314,45 @@ async function guardarMaterial(){
     const precio = parseFloat(document.getElementById('precioUnitario').value);
     if(!nombre) return alert('Escribe el nombre del material');
     if(isNaN(precio) || precio <= 0) return alert('Pon un precio mayor a 0');
+    
+    const nuevoMaterial = { nombre, unidad, precio };
+    
     try {
-        const { error } = await supabaseCliente.from('materiales').insert([{ nombre, unidad, precio }]);
+        const { error } = await supabaseCliente.from('materiales').insert([nuevoMaterial]);
         if(error) throw error;
-        alert("✅ Material guardado");
-        document.getElementById('nombreMaterial').value = '';
-        document.getElementById('precioUnitario').value = '';
-        await cargarMateriales();
+        alert("✅ Material guardado en la nube");
     } catch (err) {
-        alert("No se guardó: " + err.message);
+        guardarComoPendiente('material', nuevoMaterial);
+        const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+        locales.push(nuevoMaterial);
+        localStorage.setItem('materialesLocales', JSON.stringify(locales));
     }
+    
+    document.getElementById('nombreMaterial').value = '';
+    document.getElementById('precioUnitario').value = '';
+    await cargarMateriales();
 }
 
 function actualizarTablaMateriales(lista){
     const cuerpo = document.getElementById('cuerpoTabla');
-    cuerpo.innerHTML = lista.map(m => `
+    cuerpo.innerHTML = lista.map((m, i) => `
         <tr>
             <td>${m.nombre}</td>
             <td>${m.unidad}</td>
             <td>$${m.precio.toFixed(2)}</td>
-            <td><button class="btn-danger" onclick="eliminarMaterial(${m.id})">Eliminar</button></td>
+            <td><button class="btn-danger" onclick="eliminarMaterial(${m.id || 'local-' + i})">Eliminar</button></td>
         </tr>
     `).join('');
 }
 
 async function eliminarMaterial(id){
+    if(String(id).startsWith('local-')) {
+        let locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+        locales.splice(Number(String(id).split('-')[1]), 1);
+        localStorage.setItem('materialesLocales', JSON.stringify(locales));
+        await cargarMateriales();
+        return;
+    }
     try {
         const { error } = await supabaseCliente.from('materiales').delete().eq('id', id);
         if(error) throw error;
@@ -288,12 +367,23 @@ function actualizarSelectMateriales(lista){
     select.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio.toFixed(2)}/${m.unidad}</option>`).join('');
 }
 
+// ========== GESTIÓN DE COMPRAS ==========
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
     if(!cantidad || cantidad <=0) return alert('Pon el peso de esta pesada');
-    const { data: mat, error } = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).single();
-    if(error || !mat) return alert("Material no encontrado");
+    
+    let mat;
+    try {
+        const { data, error } = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).single();
+        if(!error && data) mat = data;
+    } catch {}
+    if(!mat) {
+        const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+        mat = locales.find(m => m.nombre === nombre);
+    }
+    if(!mat) return alert("Material no encontrado");
+    
     carrito.push({ nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: mat.precio, total: cantidad * mat.precio });
     actualizarCarrito();
     document.getElementById('cantidadRecibida').value = '';
@@ -339,7 +429,14 @@ async function generarFacturas(){
     const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
     const fecha = new Date().toLocaleDateString('es-EC');
     facturaActual = { fecha, total_general: totalGeneral, detalles: [...carrito] };
-    await supabaseCliente.from('facturas').insert([facturaActual]);
+    
+    try {
+        await supabaseCliente.from('facturas').insert([facturaActual]);
+        alert("✅ Factura guardada en la nube");
+    } catch (err) {
+        guardarComoPendiente('factura', facturaActual);
+    }
+    
     mostrarCliente();
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
     document.getElementById('btnVerCliente').style.display = 'inline-block';
@@ -349,6 +446,7 @@ async function generarFacturas(){
     await cargarHistorialYTotales();
 }
 
+// ========== FACTURAS ==========
 function mostrarCliente(){
     if(!facturaActual) return;
     let agrupado = {};
@@ -402,68 +500,76 @@ function cerrarVentana(){
     document.getElementById('btnVerCliente').style.display = 'none';
 }
 
+// ========== HISTORIAL Y TOTALES ==========
 async function cargarHistorialYTotales(){
     try {
         const { data: facturas, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false});
         if(error) throw error;
+        procesarFacturas(facturas || []);
+    } catch (err) {
+        console.log("Cargando registros locales...");
+        const locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
+        procesarFacturas(locales);
+    }
+}
 
-        totalesPorDia = {};
-        facturas.forEach(factura => {
-            const fecha = factura.fecha;
-            if(!totalesPorDia[fecha]) totalesPorDia[fecha] = {};
-            
-            factura.detalles.forEach(item => {
-                if(!totalesPorDia[fecha][item.nombre]){
-                    totalesPorDia[fecha][item.nombre] = {
-                        cantidadTotal: 0,
-                        unidad: item.unidad,
-                        montoTotal: 0
-                    };
-                }
-                totalesPorDia[fecha][item.nombre].cantidadTotal += item.cantidad;
-                totalesPorDia[fecha][item.nombre].montoTotal += item.total;
-            });
+function procesarFacturas(facturas){
+    totalesPorDia = {};
+    facturas.forEach(factura => {
+        const fecha = factura.fecha;
+        if(!totalesPorDia[fecha]) totalesPorDia[fecha] = {};
+        
+        factura.detalles.forEach(item => {
+            if(!totalesPorDia[fecha][item.nombre]){
+                totalesPorDia[fecha][item.nombre] = {
+                    cantidadTotal: 0,
+                    unidad: item.unidad,
+                    montoTotal: 0
+                };
+            }
+            totalesPorDia[fecha][item.nombre].cantidadTotal += item.cantidad;
+            totalesPorDia[fecha][item.nombre].montoTotal += item.total;
+        });
+    });
+
+    totalesOriginales = {...totalesPorDia};
+    actualizarVistaTotalesPorDia();
+
+    const listaHistorial = document.getElementById('listaHistorial');
+    if(facturas.length === 0){
+        listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas</p>`;
+    } else {
+        const agrupadoPorFecha = {};
+        facturas.forEach(f => {
+            if(!agrupadoPorFecha[f.fecha]) agrupadoPorFecha[f.fecha] = [];
+            agrupadoPorFecha[f.fecha].push(f);
         });
 
-        totalesOriginales = {...totalesPorDia};
-        actualizarVistaTotalesPorDia();
-
-        const listaHistorial = document.getElementById('listaHistorial');
-        if(facturas.length === 0){
-            listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas</p>`;
-        } else {
-            const agrupadoPorFecha = {};
-            facturas.forEach(f => {
-                if(!agrupadoPorFecha[f.fecha]) agrupadoPorFecha[f.fecha] = [];
-                agrupadoPorFecha[f.fecha].push(f);
-            });
-
-            listaHistorial.innerHTML = Object.entries(agrupadoPorFecha).map(([fecha, listaFacturas]) => `
-                <div class="item-fecha">
-                    <div class="titulo-fecha" onclick="alternarFecha(this)">
-                        <span>📅 ${fecha}</span>
-                        <span class="flecha">▼</span>
-                    </div>
-                    <div class="contenido-fechas">
-                        <table class="tabla-resumen">
-                            <tr><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
-                            ${listaFacturas.map(f => `
-                            <tr>
-                                <td>$${f.total_general.toFixed(2)}</td>
-                                <td>
-                                    <button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "cliente")'>Ver</button>
-                                </td>
-                                <td>
-                                    <button class="btn-detallada" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "detallada")'>Ver</button>
-                                </td>
-                            </tr>
-                            `).join('')}
-                        </table>
-                    </div>
+        listaHistorial.innerHTML = Object.entries(agrupadoPorFecha).map(([fecha, listaFacturas]) => `
+            <div class="item-fecha">
+                <div class="titulo-fecha" onclick="alternarFecha(this)">
+                    <span>📅 ${fecha}</span>
+                    <span class="flecha">▼</span>
                 </div>
-            `).join('');
-        }
-    } catch (err) { console.error("Error al cargar: ", err); }
+                <div class="contenido-fechas">
+                    <table class="tabla-resumen">
+                        <tr><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
+                        ${listaFacturas.map(f => `
+                        <tr>
+                            <td>$${f.total_general.toFixed(2)}</td>
+                            <td>
+                                <button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "cliente")'>Ver</button>
+                            </td>
+                            <td>
+                                <button class="btn-detallada" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "detallada")'>Ver</button>
+                            </td>
+                        </tr>
+                        `).join('')}
+                    </table>
+                </div>
+            </div>
+        `).join('');
+    }
 }
 
 function alternarFecha(elemento) {
