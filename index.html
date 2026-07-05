@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recicladora Alexander</title>
+    <!-- Configuración para funcionar como App -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2e7d32">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
@@ -50,6 +53,42 @@
         .tabla-resumen th:first-child, .tabla-resumen td:first-child { text-align: left; }
         .tabla-resumen th { background: #e8f5e9; font-weight: 600; }
         .resumen-dia { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #90caf9; }
+
+        /* Estilos nuevos para el historial desplegable */
+        .item-fecha {
+            border: 1px solid #ffcc80;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            background: #fff;
+        }
+        .titulo-fecha {
+            padding: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #e65100;
+            background: #fff3e0;
+            border-radius: 6px;
+        }
+        .titulo-fecha:hover {
+            background: #ffe0b2;
+        }
+        .flecha {
+            transition: transform 0.3s;
+        }
+        .contenido-fechas {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding: 0 10px;
+        }
+        .contenido-fechas.abierto {
+            max-height: 2000px;
+            padding: 10px;
+        }
+
         #ventanaFactura { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center; padding: 8px; }
         .caja-factura { background: white; width: 100%; max-width: 500px; padding: 20px; border-radius: 10px; position: relative; max-height: 95vh; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .btn-cerrar { position: absolute; top: 6px; right: 10px; font-size: 24px; border: none; background: none; cursor: pointer; color: #666; font-weight: 400; }
@@ -96,7 +135,6 @@
 <body>
 
 <div class="container">
-    <!-- ✅ RUTA DIRECTA A TU LOGO -->
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
     <div class="aviso">✅ Conectado a tu base en la nube | Búsqueda por fecha</div>
@@ -403,23 +441,45 @@ async function cargarHistorialYTotales(){
         if(facturas.length === 0){
             listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas</p>`;
         } else {
-            listaHistorial.innerHTML = `
-            <table class="tabla-resumen">
-                <tr><th>Fecha</th><th>Total</th><th>Facturas</th></tr>
-                ${facturas.map(f => `
-                <tr>
-                    <td>${f.fecha}</td>
-                    <td>$${f.total_general.toFixed(2)}</td>
-                    <td>
-                        <button class="btn-cliente" style="padding:4px 6px; font-size:11px;" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "cliente")'>Cliente</button>
-                        <button class="btn-detallada" style="padding:4px 6px; font-size:11px;" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "detallada")'>Detallada</button>
-                    </td>
-                </tr>
-                `).join('')}
-            </table>
-            `;
+            const agrupadoPorFecha = {};
+            facturas.forEach(f => {
+                if(!agrupadoPorFecha[f.fecha]) agrupadoPorFecha[f.fecha] = [];
+                agrupadoPorFecha[f.fecha].push(f);
+            });
+
+            listaHistorial.innerHTML = Object.entries(agrupadoPorFecha).map(([fecha, listaFacturas]) => `
+                <div class="item-fecha">
+                    <div class="titulo-fecha" onclick="alternarFecha(this)">
+                        <span>📅 ${fecha}</span>
+                        <span class="flecha">▼</span>
+                    </div>
+                    <div class="contenido-fechas">
+                        <table class="tabla-resumen">
+                            <tr><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
+                            ${listaFacturas.map(f => `
+                            <tr>
+                                <td>$${f.total_general.toFixed(2)}</td>
+                                <td>
+                                    <button class="btn-cliente" style="padding:4px 6px; font-size:11px;" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "cliente")'>Ver</button>
+                                </td>
+                                <td>
+                                    <button class="btn-detallada" style="padding:4px 6px; font-size:11px;" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "detallada")'>Ver</button>
+                                </td>
+                            </tr>
+                            `).join('')}
+                        </table>
+                    </div>
+                </div>
+            `).join('');
         }
     } catch (err) { console.error("Error al cargar: ", err); }
+}
+
+function alternarFecha(elemento) {
+    const contenido = elemento.nextElementSibling;
+    const flecha = elemento.querySelector('.flecha');
+    contenido.classList.toggle('abierto');
+    flecha.textContent = contenido.classList.contains('abierto') ? '▲' : '▼';
 }
 
 function buscarPorFecha(){
