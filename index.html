@@ -528,23 +528,28 @@ function actualizarVistaTotalesPorDia(){
             totalGeneralInvertido += totalDia;
 
             html += `
-            <div class="resumen-dia">
-                <h3>📅 Día: ${fecha}</h3>
-                <table class="tabla-resumen">
-                    <tr><th>Material</th><th>Peso Total</th><th>Monto Total</th><th>Acción</th></tr>
-                    ${materiales.map(([n, d]) => `
-                    <tr>
-                        <td>${n}</td>
-                        <td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td>
-                        <td>$${d.montoTotal.toFixed(2)}</td>
-                        <td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterialPorDia('${fecha}', '${n}')">🔄 Eliminar Total</button></td>
-                    </tr>
-                    `).join('')}
-                    <tr class="fila-total-dia">
-                        <td colspan="2">💵 Total del día</td>
-                        <td colspan="2">$${totalDia.toFixed(2)}</td>
-                    </tr>
-                </table>
+            <div class="item-fecha">
+                <div class="titulo-fecha" onclick="alternarFecha(this)">
+                    <span>📅 Día: ${fecha}</span>
+                    <span class="flecha">▼</span>
+                </div>
+                <div class="contenido-fechas">
+                    <table class="tabla-resumen">
+                        <tr><th>Material</th><th>Peso Total</th><th>Monto Total</th><th>Acción</th></tr>
+                        ${materiales.map(([n, d]) => `
+                        <tr>
+                            <td>${n}</td>
+                            <td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td>
+                            <td>$${d.montoTotal.toFixed(2)}</td>
+                            <td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterialPorDia('${fecha}', '${n}')">🔄 Eliminar Total</button></td>
+                        </tr>
+                        `).join('')}
+                        <tr class="fila-total-dia">
+                            <td colspan="2">💵 Total del día</td>
+                            <td colspan="2">$${totalDia.toFixed(2)}</td>
+                        </tr>
+                    </table>
+                </div>
             </div>
             `;
         });
@@ -561,7 +566,6 @@ function actualizarVistaTotalesPorDia(){
         lista.innerHTML = html;
     }
 }
-
 function verFacturaGuardada(factura, tipo){
     facturaActual = factura;
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
