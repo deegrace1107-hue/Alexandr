@@ -33,22 +33,26 @@
         .btn-danger { background-color: #d32f2f; }
         .btn-danger:hover { background-color: #b71c1c; }
         .btn-cliente, .btn-detallada { 
-            padding: 5px 4px !important; 
-            font-size: 11px !important; 
-            min-width: 65px; 
-            margin: 2px !important;
+            padding: 4px 2px !important;
+            font-size: 10.5px !important;
+            min-width: 60px !important;
+            width: 100% !important;
+            margin: 1px !important;
         }
         .btn-cliente:hover { background-color: #388e3c; }
         .btn-detallada:hover { background-color: #1565c0; }
         .table-wrap { 
-            overflow-x: auto !important; 
-            -webkit-overflow-scrolling: touch !important; 
-            width: 100% !important; 
-            margin: 6px 0 !important; 
-            border-radius: 6px; 
-            border: 1px solid #e0e0e0; 
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            width: 100% !important;
+            margin: 6px 0 !important;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
         }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 500px !important; }
+        .table-wrap table {
+            min-width: 580px !important;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
         th, td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: center; vertical-align: middle; }
         th { background-color: #e8f5e9; color: #1b5e20; font-weight: 600; }
         .fila-total-dia { background-color: #e8f5e9; font-weight: 600; color: #1b5e20; }
@@ -59,8 +63,9 @@
         .totales-generales { background-color: #e3f2fd; border-color: #42a5f5; margin-top: 10px; }
         .aviso { background: #e3f2fd; padding: 7px; border-radius: 6px; margin-bottom: 8px; text-align: center; color: #1565c0; font-size: 12px; font-weight: 500; }
         .tabla-resumen { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
-        .tabla-resumen th, .tabla-resumen td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: right; }
+        .tabla-resumen th, .tabla-resumen td { border: 1px solid #e0e0e0; padding: 5px 3px !important; text-align: right; }
         .tabla-resumen th:first-child, .tabla-resumen td:first-child { text-align: left; }
+        .tabla-resumen th:last-child, .tabla-resumen td:last-child { min-width: 65px !important; }
         .tabla-resumen th { background: #e8f5e9; font-weight: 600; }
         .resumen-dia { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #90caf9; }
         .item-fecha { border: 1px solid #ffcc80; border-radius: 6px; margin-bottom: 8px; background: #fff; }
@@ -212,7 +217,7 @@
 // 🔑 PON TU CLAVE AQUÍ
 // ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
-const CLAVE_SUPABASE = "PEGA_AQUÍ_TU_CLAVE_COMPLETA_QUE_EMPIEZA_POR_ey...";
+const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
 
 let supabaseCliente;
 let carrito = [];
