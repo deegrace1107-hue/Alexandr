@@ -75,7 +75,7 @@
 <div class="container">
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso" id="estadoConexion">✅ Cargando... | Funciona sin internet</div>
+    <div class="aviso" id="estadoConexion">✅ Cargando tus datos... | Funciona sin internet</div>
     <div id="avisoPendientes" class="aviso-pendientes" style="display:none;"></div>
 
     <div class="section">
@@ -132,12 +132,12 @@
             <button class="btn-buscar" onclick="buscarPorFecha()">🔍 Buscar</button>
             <button class="btn-ver-todos" onclick="verTodosLosDias()">📋 Ver Todos</button>
         </div>
-        <div id="listaTotalesPorDia"><p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p></div>
+        <div id="listaTotalesPorDia"><p style="text-align:center; color:#666; padding:10px;">Cargando tus registros...</p></div>
     </div>
 
     <div class="section historial">
         <h2>📋 Historial de Compras</h2>
-        <div id="listaHistorial"><p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas</p></div>
+        <div id="listaHistorial"><p style="text-align:center; color:#666; padding:10px;">Cargando tus facturas guardadas...</p></div>
     </div>
 </div>
 
@@ -158,7 +158,7 @@
 Object.defineProperty(navigator, 'onLine', { value: true, writable: true });
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
-const VERSION_APP = "1.6";
+const VERSION_APP = "1.7";
 
 let supabaseCliente;
 let carrito = [];
@@ -175,7 +175,7 @@ function agregarPendiente(tipo, datos) { const lista = obtenerPendientes(); list
 function mostrarAvisoActualizacion() {
     const versionGuardada = localStorage.getItem('versionRecicladora');
     if (versionGuardada !== VERSION_APP) {
-        alert("✅ ¡Actualización lista!\nAhora incluye la hora exacta y protege los registros ya guardados.");
+        alert("✅ ¡Actualización lista!\nAhora carga PRIMERO todos tus datos guardados y protege los registros ya hechos.");
         localStorage.setItem('versionRecicladora', VERSION_APP);
     }
 }
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function actualizarEstadoConexion(conectado) {
     const aviso = document.getElementById('estadoConexion');
-    if(conectado) { aviso.innerHTML = "✅ Conectado | Todo se guarda y sincroniza"; aviso.style.background = "#e8f5e9"; aviso.style.color = "#1b5e20"; }
+    if(conectado) { aviso.innerHTML = "✅ Conectado | Todos tus datos están seguros"; aviso.style.background = "#e8f5e9"; aviso.style.color = "#1b5e20"; }
     else { aviso.innerHTML = "✅ SIN INTERNET: Trabaja normal, todo se guarda aquí"; aviso.style.background = "#e3f2fd"; aviso.style.color = "#0d47a1"; }
 }
 
@@ -218,7 +218,7 @@ async function sincronizarPendientes(){
             } catch (err) { item.intentos++; if(item.intentos >= 3) continue; await new Promise(r => setTimeout(r, 1000)); i--; }
         }
         lista = lista.filter((_,i) => !exitosos.includes(i)); guardarPendientes(lista);
-        if(exitosos.length > 0){ alert(`✅ Se subieron ${exitosos.length} registros`); await cargarHistorialYTotales(); }
+        if(exitosos.length > 0){ alert(`✅ Se subieron ${exitosos.length} registros correctamente`); await cargarHistorialYTotales(); }
     } catch (err) { console.log("Error sincronizando:", err); }
     finally { sincronizando = false; }
 }
@@ -227,13 +227,18 @@ window.addEventListener('online', () => { actualizarEstadoConexion(true); sincro
 window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
 async function cargarMateriales(){
+    // CARGA PRIMERO LO QUE YA TIENES GUARDADO
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+    if(datosLocales.length > 0) {
+        actualizarTablaMateriales(datosLocales);
+        actualizarSelectMateriales(datosLocales);
+    }
     let datosNube = [];
     try { const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre'); if(!error && data) datosNube = data; }
-    catch (err) { console.log("Usando materiales locales"); }
+    catch (err) { console.log("Usando solo materiales guardados en el celular"); }
     const mapUnico = new Map();
-    datosNube.forEach(m => mapUnico.set(String(m.id || m.nombre.toLowerCase()), m));
-    datosLocales.forEach(m => { if(!mapUnico.has(String(m.id || m.nombre.toLowerCase()))) mapUnico.set(String(m.id || m.nombre.toLowerCase()), m); });
+    datosLocales.forEach(m => mapUnico.set(String(m.id || m.nombre.toLowerCase()), m));
+    datosNube.forEach(m => { if(!mapUnico.has(String(m.id || m.nombre.toLowerCase()))) mapUnico.set(String(m.id || m.nombre.toLowerCase()), m); });
     const datosFinales = Array.from(mapUnico.values());
     localStorage.setItem('materialesLocales', JSON.stringify(datosFinales));
     actualizarTablaMateriales(datosFinales);
@@ -364,14 +369,26 @@ function mostrarDetallada(){
 function cerrarVentana(){ document.getElementById("ventanaFactura").style.display = "none"; facturaActual = null; document.getElementById('btnVerDetallada').style.display = 'none'; document.getElementById('btnVerCliente').style.display = 'none'; }
 
 async function cargarHistorialYTotales(){
+    // PRIMERO CARGA LO QUE YA TIENES GUARDADO EN EL CELULAR
     let locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
+    if(locales.length > 0) procesarFacturas(locales);
+    
     let nube = [];
     try { const { data, error } = await supabaseCliente.from('facturas').select('*'); if(!error && data) nube = data; }
-    catch (err) { console.log("Usando solo locales"); }
+    catch (err) { console.log("Usando solo tus registros guardados"); }
+    
     const mapa = new Map();
-    nube.forEach(f => mapa.set(String(f.id), f));
-    locales.forEach(f => { const clave = String(f.id_temp || f.id || Date.now()); if(!mapa.has(clave)) mapa.set(clave, f); else { const existente = mapa.get(clave); existente.pendiente = f.pendiente || existente.pendiente || false; mapa.set(clave, existente); } });
-    const todas = Array.from(mapa.values()).sort((a,b) => { const fechaA = new Date(a.fecha_completa.split(' ')[0].split('/').reverse().join('-')); const fechaB = new Date(b.fecha_completa.split(' ')[0].split('/').reverse().join('-')); return fechaB - fechaA; });
+    locales.forEach(f => { const clave = String(f.id_temp || f.id || Date.now()); mapa.set(clave, f); });
+    nube.forEach(f => { const clave = String(f.id); if(!mapa.has(clave)) mapa.set(clave, f); else { const existente = mapa.get(clave); existente.pendiente = f.pendiente || existente.pendiente || false; mapa.set(clave, existente); } });
+    
+    const todas = Array.from(mapa.values()).sort((a,b) => { 
+        const orden = (fecha) => {
+            const partes = fecha.split(' ')[0].split('/');
+            return new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
+        };
+        return orden(b.fecha_completa) - orden(a.fecha_completa);
+    });
+    
     localStorage.setItem('facturasLocales', JSON.stringify(todas));
     procesarFacturas(todas);
 }
