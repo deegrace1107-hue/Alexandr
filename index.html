@@ -223,11 +223,11 @@ Object.defineProperty(navigator, 'onLine', { value: true, writable: true });
 console.log("✅ Modo sin conexión activado");
 
 // ==============================================
-// 🔑 CONFIGURACIÓN VERSIÓN 1.3 (SINCRONIZACIÓN SEGURA)
+// 🔑 CONFIGURACIÓN VERSIÓN 1.4 (CARGA TODOS LOS REGISTROS)
 // ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
-const VERSION_APP = "1.3";
+const VERSION_APP = "1.4";
 
 let supabaseCliente;
 let carrito = [];
@@ -257,7 +257,7 @@ function agregarPendiente(tipo, datos) {
 function mostrarAvisoActualizacion() {
   const versionGuardada = localStorage.getItem('versionRecicladora');
   if (versionGuardada !== VERSION_APP) {
-    alert("✅ ¡Aplicación actualizada!\n\nAhora guarda todo seguro y sincroniza automáticamente al tener internet.\nLos registros pendientes no se perderán nunca.");
+    alert("✅ ¡Aplicación actualizada!\n\nAhora carga TODOS tus registros antiguos, guarda sin internet y sincroniza automáticamente.");
     localStorage.setItem('versionRecicladora', VERSION_APP);
   }
 }
@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function actualizarEstadoConexion(conectado) {
     const aviso = document.getElementById('estadoConexion');
     if(conectado) {
-        aviso.innerHTML = "✅ Conectado | Sincronizando datos...";
+        aviso.innerHTML = "✅ Conectado | Cargando registros...";
         aviso.style.background = "#e8f5e9";
         aviso.style.color = "#1b5e20";
     } else {
@@ -292,7 +292,7 @@ function actualizarAvisoPendientes() {
   const cantidad = obtenerPendientes().length;
   if(cantidad > 0) {
     aviso.style.display = "block";
-    aviso.innerHTML = `⚠️ Hay ${cantidad} registros pendientes de subir a la nube <button class="btn-sincronizar" onclick="sincronizarPendientes()">🔄 Sincronizar ahora</button>`;
+    aviso.innerHTML = `⚠️ Hay ${cantidad} registros pendientes <button class="btn-sincronizar" onclick="sincronizarPendientes()">🔄 Sincronizar ahora</button>`;
   } else {
     aviso.style.display = "none";
   }
@@ -316,16 +316,12 @@ async function sincronizarPendientes(){
                 exitosos.push(i);
             } catch (err) {
                 item.intentos++;
-                if(item.intentos >= 3) {
-                  alert(`⚠️ No se pudo subir un registro, se intentará después`);
-                } else {
-                  await new Promise(r => setTimeout(r, 1000)); // Esperar antes de reintentar
-                  i--; // Repetir este elemento
-                }
+                if(item.intentos >= 3) continue;
+                await new Promise(r => setTimeout(r, 1000));
+                i--;
             }
         }
 
-        // QUITAR LOS QUE SE SUBIERON BIEN
         lista = lista.filter((_,i) => !exitosos.includes(i));
         guardarPendientes(lista);
         
@@ -350,9 +346,6 @@ window.addEventListener('offline', () => actualizarEstadoConexion(false));
 // ========== MATERIALES ==========
 async function cargarMateriales(){
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    actualizarTablaMateriales(datosLocales);
-    actualizarSelectMateriales(datosLocales);
-
     let datosNube = [];
     try {
         const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true});
@@ -362,10 +355,10 @@ async function cargarMateriales(){
     }
 
     const mapUnico = new Map();
-    datosNube.forEach(m => mapUnico.set(m.nombre.toLowerCase(), m));
+    datosNube.forEach(m => mapUnico.set(String(m.id || m.nombre.toLowerCase()), m));
     datosLocales.forEach(m => {
-        if(!mapUnico.has(m.nombre.toLowerCase())) {
-            mapUnico.set(m.nombre.toLowerCase(), m);
+        if(!mapUnico.has(String(m.id || m.nombre.toLowerCase()))) {
+            mapUnico.set(String(m.id || m.nombre.toLowerCase()), m);
         }
     });
 
@@ -490,7 +483,6 @@ async function generarFacturas(){
     const idTemporal = 'TEMP-' + Date.now();
     facturaActual = { id_temp: idTemporal, fecha, total_general: totalGeneral, detalles: [...carrito], pendiente: !navigator.onLine };
     
-    // GUARDAR SIEMPRE EN LOCAL PRIMERO
     let historial = JSON.parse(localStorage.getItem('facturasLocales')) || [];
     historial.unshift(facturaActual);
     localStorage.setItem('facturasLocales', JSON.stringify(historial));
@@ -498,7 +490,6 @@ async function generarFacturas(){
     try {
         const { data, error } = await supabaseCliente.from('facturas').insert([facturaActual]).select();
         if(error) throw error;
-        // SI SE SUBIÓ BIEN, QUITAR MARCA DE PENDIENTE
         facturaActual.id = data[0].id;
         facturaActual.pendiente = false;
         localStorage.setItem('facturasLocales', JSON.stringify(historial));
@@ -570,33 +561,48 @@ function cerrarVentana(){
     document.getElementById('btnVerCliente').style.display = 'none';
 }
 
-// ========== HISTORIAL Y TOTALES ==========
+// ========== HISTORIAL Y TOTALES (CORREGIDO PARA CARGAR TODOS LOS REGISTROS) ==========
 async function cargarHistorialYTotales(){
-    // CARGAR SIEMPRE PRIMERO LO LOCAL
     let locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
     let nube = [];
 
     try {
-        const { data, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false});
-        if(!error && data) nube = data;
+        // TRAE ABSOLUTAMENTE TODOS LOS REGISTROS DE LA NUBE
+        const { data, error } = await supabaseCliente.from('facturas').select('*');
+        if(!error && data) {
+            nube = data;
+            console.log(`✅ Se cargaron ${nube.length} registros de la base de datos`);
+        }
     } catch (err) {
-        console.log("Usando solo registros locales");
+        console.log("⚠️ Usando solo registros locales:", err);
     }
 
-    // UNIR SIN REPETIR: PRIORIZAR LOCALES SI ESTÁN PENDIENTES
     const mapa = new Map();
-    locales.forEach(f => mapa.set(f.id_temp || f.id, f));
-    nube.forEach(f => {
-        if(!mapa.has(f.id)) mapa.set(f.id, f);
-        else {
-            // SI YA ESTÁ LOCAL Y TIENE ID, QUITAR MARCA DE PENDIENTE
-            const existente = mapa.get(f.id);
-            existente.pendiente = false;
-            mapa.set(f.id, existente);
+    
+    // PRIMERO CARGA TODOS LOS DE LA NUBE
+    nube.forEach(f => mapa.set(String(f.id), f));
+    
+    // LUEGO AGREGA LOS LOCALES SIN REPETIR NINGUNO
+    locales.forEach(f => {
+        const clave = String(f.id_temp || f.id || Date.now());
+        if(!mapa.has(clave)) {
+            mapa.set(clave, f);
+        } else {
+            const existente = mapa.get(clave);
+            existente.pendiente = f.pendiente || existente.pendiente || false;
+            mapa.set(clave, existente);
         }
     });
 
-    const todas = Array.from(mapa.values()).sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+    // ORDENA CORRECTAMENTE POR FECHA
+    const todas = Array.from(mapa.values()).sort((a,b) => {
+        const ordenFecha = (fecha) => {
+            const partes = fecha.split('/');
+            return new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
+        };
+        return ordenFecha(b.fecha) - ordenFecha(a.fecha);
+    });
+
     localStorage.setItem('facturasLocales', JSON.stringify(todas));
     procesarFacturas(todas);
 }
@@ -803,4 +809,24 @@ function actualizarVistaTotalesPorDia(){
                     `).join('')}
                     <tr class="fila-total-general">
                         <td colspan="2">💰 TOTAL GENERAL INVERTIDO</td>
-                        <td colspan="2">$${totalGeneral.to
+                        <td colspan="2">$${totalGeneral.toFixed(2)}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        `;
+    }
+
+    lista.innerHTML = html;
+}
+
+function verFacturaGuardada(factura, tipo){
+    facturaActual = factura;
+    document.getElementById('btnVerDetallada').style.display = 'inline-block';
+    document.getElementById('btnVerCliente').style.display = 'inline-block';
+    tipo === "cliente" ? mostrarCliente() : mostrarDetallada();
+    document.getElementById("ventanaFactura").style.display = "flex";
+}
+</script>
+</body>
+</html>
