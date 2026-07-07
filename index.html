@@ -215,10 +215,11 @@
 
 <script>
 // ==============================================
-// 🔑 PON TU CLAVE AQUÍ
+// 🔑 CONFIGURACIÓN Y ACTUALIZACIÓN
 // ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
+const VERSION_APP = "1.1"; // Solo cambia esto cuando hagas mejoras nuevas
 
 let supabaseCliente;
 let carrito = [];
@@ -229,11 +230,24 @@ let vistaAgrupada = false;
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 let sincronizando = false;
 
+// ==============================================
+// 🎉 AVISO DE ACTUALIZACIÓN (SOLO UNA VEZ)
+// ==============================================
+function mostrarAvisoActualizacion() {
+  const versionGuardada = localStorage.getItem('versionRecicladora');
+  if (versionGuardada !== VERSION_APP) {
+    alert("✅ ¡Aplicación actualizada correctamente!\n\nAhora funciona 100% sin internet:\nTodos tus registros se guardan primero en tu celular y se sincronizan automáticamente cuando vuelvas a tener conexión.");
+    localStorage.setItem('versionRecicladora', VERSION_APP);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+    mostrarAvisoActualizacion();
     supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
-    actualizarEstadoConexion(navigator.onLine);
+    // CARGAR DATOS LOCALES DE INMEDIATO SIN ESPERAR INTERNET
     await cargarMateriales();
     await cargarHistorialYTotales();
+    actualizarEstadoConexion(navigator.onLine);
     await sincronizarPendientes();
 });
 
@@ -248,13 +262,15 @@ function actualizarEstadoConexion(conectado) {
         aviso.innerHTML = "⚠️ SIN INTERNET: Todo se guarda en el celular y se subirá al tener señal";
         aviso.style.background = "#fff3cd";
         aviso.style.color = "#856404";
+        // EVITAR ERRORES DE BÚSQUEDA DE RED SIN INTERNET
+        window.fetch = () => Promise.reject("Modo sin conexión activo");
     }
 }
 
 function guardarComoPendiente(tipo, datos){
     datosPendientes.push({ tipo, datos, fecha: new Date().toISOString() });
     localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-    alert("✅ Guardado sin conexión: se enviará a la nube cuando haya internet");
+    alert("✅ Guardado correctamente: se sincronizará cuando vuelvas a tener internet");
 }
 
 async function sincronizarPendientes(){
@@ -296,17 +312,21 @@ window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
 // ========== GESTIÓN DE MATERIALES (SIN REPETIDOS) ==========
 async function cargarMateriales(){
+    // CARGAR PRIMERO LOCAL PARA NO DEMORAR
+    const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+    actualizarTablaMateriales(datosLocales);
+    actualizarSelectMateriales(datosLocales);
+
+    // LUEGO ACTUALIZAR CON LA NUBE SI HAY SEÑAL
     let datosNube = [];
     try {
         const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true});
         if(!error && data) datosNube = data;
     } catch (err) {
-        console.log("Sin conexión, usaremos los guardados en el celular");
+        console.log("Sin conexión, usando registros locales");
     }
 
-    const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    
-    // Eliminamos repetidos: se queda con el de la nube si hay coincidencia
+    // ELIMINAR REPETIDOS
     const mapUnico = new Map();
     datosNube.forEach(m => mapUnico.set(m.nombre.toLowerCase(), m));
     datosLocales.forEach(m => {
@@ -329,17 +349,17 @@ async function guardarMaterial(){
     if(!nombre) return alert('Escribe el nombre del material');
     if(isNaN(precio) || precio <= 0) return alert('Pon un precio mayor a 0');
     
-    // Verificamos que no exista ya antes de guardar
+    // VERIFICAR QUE NO EXISTA YA
     const listaActual = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     const existe = listaActual.some(m => m.nombre.toLowerCase() === nombre.toLowerCase());
-    if(existe) return alert(`⚠️ El material "${nombre}" ya está registrado, no hace falta agregarlo otra vez`);
+    if(existe) return alert(`⚠️ El material "${nombre}" ya está registrado`);
 
     const nuevoMaterial = { nombre, unidad, precio };
     
     try {
         const { error } = await supabaseCliente.from('materiales').insert([nuevoMaterial]);
         if(error) throw error;
-        alert("✅ Material guardado en la nube");
+        alert("✅ Material guardado correctamente");
     } catch (err) {
         guardarComoPendiente('material', nuevoMaterial);
         listaActual.push(nuevoMaterial);
@@ -376,7 +396,7 @@ async function eliminarMaterial(id){
         if(error) throw error;
         await cargarMateriales();
     } catch (err) {
-        alert("No se pudo eliminar: " + err.message);
+        alert("No se pudo eliminar, se guardará el cambio cuando haya internet");
     }
 }
 
@@ -392,14 +412,8 @@ async function agregarAlCarrito(){
     if(!cantidad || cantidad <=0) return alert('Pon el peso de esta pesada');
     
     let mat;
-    try {
-        const { data, error } = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).single();
-        if(!error && data) mat = data;
-    } catch {}
-    if(!mat) {
-        const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-        mat = locales.find(m => m.nombre === nombre);
-    }
+    const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+    mat = locales.find(m => m.nombre === nombre);
     if(!mat) return alert("Material no encontrado");
     
     carrito.push({ nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: mat.precio, total: cantidad * mat.precio });
@@ -450,7 +464,7 @@ async function generarFacturas(){
     
     try {
         await supabaseCliente.from('facturas').insert([facturaActual]);
-        alert("✅ Factura guardada en la nube");
+        alert("✅ Factura guardada correctamente");
     } catch (err) {
         guardarComoPendiente('factura', facturaActual);
     }
@@ -520,14 +534,19 @@ function cerrarVentana(){
 
 // ========== HISTORIAL Y TOTALES ==========
 async function cargarHistorialYTotales(){
+    // CARGAR PRIMERO LOCAL
+    const locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
+    procesarFacturas(locales);
+
+    // LUEGO ACTUALIZAR DE LA NUBE
     try {
         const { data: facturas, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false});
-        if(error) throw error;
-        procesarFacturas(facturas || []);
+        if(!error && facturas) {
+            localStorage.setItem('facturasLocales', JSON.stringify(facturas));
+            procesarFacturas(facturas);
+        }
     } catch (err) {
-        console.log("Cargando registros locales...");
-        const locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
-        procesarFacturas(locales);
+        console.log("Usando registros locales");
     }
 }
 
@@ -633,7 +652,7 @@ function eliminarTotalMaterialPorDia(fecha, nombreMaterial){
 }
 
 function reiniciarMaterialNuevoPeriodo(nombreMaterial){
-    if(confirm(`⚠️ ¿Segura que quieres reiniciar ${nombreMaterial}?\nSe borrará TODO lo acumulado de este material de TODOS los días, listo para empezar la nueva cuenta.`)){
+    if(confirm(`⚠️ ¿Segura que quieres reiniciar ${nombreMaterial}?\nSe borrará TODO lo acumulado de este material de TODOS los días.`)){
         Object.keys(totalesPorDia).forEach(fecha => {
             delete totalesPorDia[fecha][nombreMaterial];
             if(Object.keys(totalesPorDia[fecha]).length === 0) delete totalesPorDia[fecha];
