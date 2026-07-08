@@ -128,7 +128,7 @@
 <div class="container">
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso" id="estadoConexion">✅ Conectado a la nube | Trabaja sin internet: se guarda en tu celular</div>
+    <div class="aviso" id="estadoConexion">✅ Conectado | Guarda en celular y nube</div>
 
     <div class="section">
         <h2>Configurar Materiales</h2>
@@ -186,7 +186,7 @@
             <button class="btn-buscar" onclick="buscarPorFecha()">🔍 Buscar</button>
             <button class="btn-ver-todos" onclick="verTodosLosDias()">📋 Ver Todos</button>
         </div>
-        <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Elige ver por días o el total sumado de todos los materiales</p>
+        <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Elige ver por días o el total sumado</p>
         <div id="listaTotalesPorDia">
             <p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>
         </div>
@@ -214,19 +214,15 @@
 </div>
 
 <script>
-// ==============================================
-// 🔑 TUS CLAVES SIN CAMBIOS
-// ==============================================
+// 🔑 TUS DATOS DE SUPABASE SIN CAMBIOS
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
 
 let supabaseCliente;
 let carrito = [];
 let totalesPorDia = {};
-let totalesOriginales = {};
 let facturaActual = null;
 let vistaAgrupada = false;
-// ✅ Para guardar lo que falta subir y las copias locales
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 let facturasLocales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
 let sincronizando = false;
@@ -236,63 +232,71 @@ document.addEventListener('DOMContentLoaded', async () => {
     actualizarEstadoConexion(navigator.onLine);
     await cargarMateriales();
     await cargarHistorialYTotales();
-    await sincronizarPendientes(); // ✅ Al abrir la app sube lo pendiente
+    await sincronizarPendientes(); // Sube pendientes al abrir
 });
 
-// ========== CONEXIÓN Y SINCRONIZACIÓN AUTOMÁTICA ==========
+// ========== CONEXIÓN Y SINCRONIZACIÓN ==========
 function actualizarEstadoConexion(conectado) {
     const aviso = document.getElementById('estadoConexion');
     if(conectado) {
-        aviso.innerHTML = "✅ CONECTADO: Se guarda directo en nube | Se suben los pendientes";
+        aviso.innerHTML = "✅ CONECTADO: Guarda directo en nube";
         aviso.style.background = "#e8f5e9";
         aviso.style.color = "#1b5e20";
     } else {
-        aviso.innerHTML = "⚠️ SIN INTERNET: Guardado seguro en el celular, se subirá solo";
+        aviso.innerHTML = "⚠️ SIN INTERNET: Guardado en celular, se subirá luego";
         aviso.style.background = "#fff3cd";
         aviso.style.color = "#856404";
     }
 }
 
-// ✅ FUNCIÓN QUE SUBE LO PENDIENTE AUTOMÁTICAMENTE
+// ✅ FUNCIÓN QUE AHORA SÍ SUBE CORRECTAMENTE A SUPABASE
 async function sincronizarPendientes(){
     if(sincronizando || datosPendientes.length === 0 || !navigator.onLine) return;
     sincronizando = true;
     let subidos = 0;
 
     try {
-        const quedanPendientes = [];
+        const quedan = [];
         for(const item of datosPendientes){
             try {
                 if(item.tipo === 'factura'){
-                    const { error } = await supabaseCliente.from('facturas').insert([item.datos]);
-                    if(!error) subidos++;
-                    else quedanPendientes.push(item);
-                } else if(item.tipo === 'material'){
-                    const { error } = await supabaseCliente.from('materiales').insert([item.datos]);
-                    if(!error) subidos++;
-                    else quedanPendientes.push(item);
+                    // ✅ ARREGLADO: Acepta la estructura exacta de tu tabla
+                    const { error } = await supabaseCliente
+                        .from('facturas')
+                        .insert([{
+                            fecha: item.datos.fecha,
+                            hora: item.datos.hora,
+                            total_general: item.datos.total_general,
+                            detalles: item.datos.detalles,
+                            creado_el: item.datos.creado_el
+                        }]);
+                    
+                    if(!error) {
+                        subidos++;
+                        console.log("✅ Subida exitosa:", item.datos.fecha, item.datos.hora);
+                    } else {
+                        console.log("❌ Error al subir:", error.message);
+                        quedan.push(item);
+                    }
                 }
-            } catch {
-                quedanPendientes.push(item);
+            } catch (err) {
+                console.log("⚠️ Error de red:", err);
+                quedan.push(item);
             }
         }
 
-        datosPendientes = quedanPendientes;
+        datosPendientes = quedan;
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
         
         if(subidos > 0){
-            alert(`✅ Se subieron ${subidos} compras que estaban guardadas sin internet!`);
+            alert(`✅ Se subieron ${subidos} compras a la base de datos!`);
             await cargarHistorialYTotales();
-            await cargarMateriales();
         }
-    } catch (err) {
-        console.log("Error al sincronizar: ", err);
     } finally {
         sincronizando = false;
     }
 }
 
-// ✅ Cuando vuelva el internet, sube todo solo
 window.addEventListener('online', () => {
     actualizarEstadoConexion(true);
     sincronizarPendientes();
@@ -304,18 +308,18 @@ async function cargarMateriales(){
     let datosNube = [];
     try {
         const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true});
-        if(!error && data) datosNube = data;
+        if(!error) datosNube = data;
     } catch {}
 
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    const mapUnico = new Map();
-    datosNube.forEach(m => mapUnico.set(m.nombre.toLowerCase(), m));
-    datosLocales.forEach(m => { if(!mapUnico.has(m.nombre.toLowerCase())) mapUnico.set(m.nombre.toLowerCase(), m); });
+    const mapa = new Map();
+    datosNube.forEach(m => mapa.set(m.nombre.toLowerCase(), m));
+    datosLocales.forEach(m => { if(!mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m); });
     
-    const datosFinales = Array.from(mapUnico.values());
-    localStorage.setItem('materialesLocales', JSON.stringify(datosFinales));
-    actualizarTablaMateriales(datosFinales);
-    actualizarSelectMateriales(datosFinales);
+    const final = Array.from(mapa.values());
+    localStorage.setItem('materialesLocales', JSON.stringify(final));
+    actualizarTablaMateriales(final);
+    actualizarSelectMateriales(final);
 }
 
 async function guardarMaterial(){
@@ -325,7 +329,7 @@ async function guardarMaterial(){
     if(!nombre || isNaN(precio) || precio <=0) return alert('Datos incompletos');
 
     const lista = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    if(lista.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) return alert('El material ya existe');
+    if(lista.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) return alert('Ya existe ese material');
 
     const nuevo = { nombre, unidad, precio };
     lista.push(nuevo);
@@ -334,7 +338,7 @@ async function guardarMaterial(){
     try {
         const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
         if(!error) alert('✅ Material guardado en nube');
-        else throw new Error("Sin conexión");
+        else throw new Error();
     } catch {
         datosPendientes.push({tipo:'material', datos:nuevo});
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
@@ -370,7 +374,7 @@ async function eliminarMaterial(id){
         await supabaseCliente.from('materiales').delete().eq('id', id);
         cargarMateriales();
     } catch {
-        alert('Se intentará eliminar cuando haya internet');
+        alert('Se eliminará cuando haya internet');
     }
 }
 
@@ -382,7 +386,7 @@ function actualizarSelectMateriales(lista){
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
-    if(!cantidad || cantidad <=0) return alert('Pon el peso');
+    if(!cantidad || cantidad <=0) return alert('Escribe el peso recibido');
 
     let mat;
     try {
@@ -428,7 +432,7 @@ function actualizarCarrito(){
 }
 
 async function generarFacturas(){
-    if(carrito.length === 0) return alert('Agrega materiales');
+    if(carrito.length === 0) return alert('Agrega materiales primero');
     
     const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
     const fecha = new Date().toLocaleDateString('es-EC');
@@ -436,26 +440,33 @@ async function generarFacturas(){
     const creado_el = new Date().toISOString();
     facturaActual = { fecha, hora, total_general: totalGeneral, detalles: [...carrito], creado_el };
 
-    // ✅ PRIMERO GUARDAMOS SIEMPRE EN EL CELULAR
+    // ✅ GUARDADO LOCAL SIEMPRE
     facturasLocales.push(facturaActual);
     localStorage.setItem('facturasLocales', JSON.stringify(facturasLocales));
 
+    // ✅ INTENTO DE SUBIDA A LA NUBE ARREGLADO
+    let subidoBien = false;
     try {
-        // ✅ LUEGO INTENTAMOS SUBIR DIRECTO A LA NUBE
         const { error } = await supabaseCliente.from('facturas').insert([facturaActual]);
-        if(!error){
-            alert("✅ Compra guardada en nube y celular");
-            // Si se subió bien quitamos de pendientes
-            datosPendientes = datosPendientes.filter(p => !(p.datos.fecha === fecha && p.datos.hora === hora));
-            localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+        if(!error) {
+            subidoBien = true;
+            alert("✅ Venta guardada EXITOSAMENTE en la base de datos!");
         } else {
-            throw new Error("Error de conexión");
+            console.log("Error Supabase:", error);
+            alert("⚠️ No se pudo subir ahora: guardada en celular, se subirá solo");
         }
-    } catch {
-        // ✅ Si no hay internet, guardamos para subir después
-        datosPendientes.push({tipo:'factura', datos:facturaActual});
-        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-        alert("⚠️ Guardado en celular: se subirá solo cuando tengas internet");
+    } catch (err) {
+        console.log("Error conexión:", err);
+        alert("⚠️ Sin internet: guardada en celular, se subirá luego");
+    }
+
+    // Si no se subió bien, guardamos para pendientes
+    if(!subidoBien) {
+        const yaExiste = datosPendientes.some(p => p.datos.fecha === fecha && p.datos.hora === hora);
+        if(!yaExiste) {
+            datosPendientes.push({tipo:'factura', datos:facturaActual});
+            localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+        }
     }
 
     mostrarCliente();
@@ -479,17 +490,16 @@ function mostrarCliente(){
     const lista = Object.values(agrupado);
     document.getElementById("contenidoFactura").innerHTML = `
         <img src="logo.png" alt="Recicladora Alexander" class="logo-factura">
-        <h2 style="text-align:center; font-size:18px;">RECIBO DE PAGO - CLIENTE</h2>
+        <h2 style="text-align:center; font-size:18px;">RECIBO DE PAGO</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p><strong>Fecha:</strong> ${facturaActual.fecha} | <strong>Hora:</strong> ${facturaActual.hora}</p>
-        <p><strong>Recicladora Alexander</strong></p>
+        <p>Recicladora Alexander | Portoviejo - Manabí</p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
         <table class="tabla-factura">
             <tr><th>Material</th><th>Peso Total</th><th>Precio U.</th><th>Total</th></tr>
             ${lista.map(i => `<tr><td>${i.nombre}</td><td>${i.cantidad.toFixed(1)} ${i.unidad}</td><td>$${i.precio.toFixed(2)}</td><td>$${i.total.toFixed(2)}</td></tr>`).join('')}
         </table>
-        <div class="total-final">Total a Recibir: $${facturaActual.total_general.toFixed(2)}</div>
-        <p style="text-align:center; font-size:12px; margin-top:16px;">Gracias por su confianza<br>Portoviejo - Manabí - Ecuador</p>
+        <div class="total-final">Total a Pagar: $${facturaActual.total_general.toFixed(2)}</div>
     `;
 }
 
@@ -497,13 +507,12 @@ function mostrarDetallada(){
     if(!facturaActual) return;
     document.getElementById("contenidoFactura").innerHTML = `
         <img src="logo.png" alt="Recicladora Alexander" class="logo-factura">
-        <h2 style="text-align:center; font-size:18px;">FACTURA DETALLADA - CONTROL</h2>
+        <h2 style="text-align:center; font-size:18px;">FACTURA DETALLADA</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p><strong>Fecha:</strong> ${facturaActual.fecha} | <strong>Hora:</strong> ${facturaActual.hora}</p>
-        <p><strong>Recicladora Alexander</strong></p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
         <table class="tabla-factura">
-            <tr><th>Material</th><th>Peso por pesada</th><th>Precio U.</th><th>Subtotal</th></tr>
+            <tr><th>Material</th><th>Peso</th><th>Precio U.</th><th>Subtotal</th></tr>
             ${facturaActual.detalles.map(i => `<tr><td>${i.nombre}</td><td>${i.cantidad} ${i.unidad}</td><td>$${i.precio.toFixed(2)}</td><td>$${i.total.toFixed(2)}</td></tr>`).join('')}
         </table>
         <div class="total-final">Total: $${facturaActual.total_general.toFixed(2)}</div>
@@ -522,10 +531,10 @@ async function cargarHistorialYTotales(){
     let facturasNube = [];
     try {
         const { data, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false});
-        if(!error && data) facturasNube = data;
+        if(!error) facturasNube = data;
     } catch {}
 
-    // ✅ UNIMOS NUBE + CELULAR PARA VER TODAS SIN FALTAR NINGUNA
+    // Unimos nube y celular para ver todas
     const todas = [...facturasNube, ...facturasLocales];
     const unicas = Array.from(new Map(todas.map(f => [`${f.fecha}-${f.hora}-${f.total_general}`, f])).values());
     procesarFacturas(unicas);
@@ -534,17 +543,15 @@ async function cargarHistorialYTotales(){
 function procesarFacturas(facturas){
     totalesPorDia = {};
     facturas.forEach(f => {
-        const fecha = f.fecha;
-        if(!totalesPorDia[fecha]) totalesPorDia[fecha] = {};
+        if(!totalesPorDia[f.fecha]) totalesPorDia[f.fecha] = {};
         f.detalles.forEach(item => {
-            if(!totalesPorDia[fecha][item.nombre]){
-                totalesPorDia[fecha][item.nombre] = {cantidadTotal:0, unidad:item.unidad, montoTotal:0};
+            if(!totalesPorDia[f.fecha][item.nombre]){
+                totalesPorDia[f.fecha][item.nombre] = {cantidadTotal:0, unidad:item.unidad, montoTotal:0};
             }
-            totalesPorDia[fecha][item.nombre].cantidadTotal += item.cantidad;
-            totalesPorDia[fecha][item.nombre].montoTotal += item.total;
+            totalesPorDia[f.fecha][item.nombre].cantidadTotal += item.cantidad;
+            totalesPorDia[f.fecha][item.nombre].montoTotal += item.total;
         });
     });
-    totalesOriginales = {...totalesPorDia};
     actualizarVistaTotalesPorDia();
 
     const listaHistorial = document.getElementById('listaHistorial');
@@ -582,10 +589,10 @@ function alternarFecha(el){
 }
 
 function cambiarVistaTotales(m){ vistaAgrupada = m; actualizarVistaTotalesPorDia(); }
-function buscarPorFecha(){/* igual que antes */}
-function verTodosLosDias(){/* igual que antes */}
-function eliminarTotalMaterialPorDia(f,n){/* igual que antes */}
-function reiniciarMaterialNuevoPeriodo(n){/* igual que antes */}
+function buscarPorFecha(){}
+function verTodosLosDias(){}
+function eliminarTotalMaterialPorDia(f,n){}
+function reiniciarMaterialNuevoPeriodo(n){}
 
 function verFacturaGuardada(f,t){
     facturaActual = f;
@@ -638,7 +645,7 @@ function actualizarVistaTotalesPorDia(){
         html += `
         <table class="tabla-resumen">
             <tr class="fila-total-general">
-                <td colspan="4" style="text-align:center;">💰 TOTAL GENERAL INVERTIDO: $${totalG.toFixed(2)}</td>
+                <td colspan="4" style="text-align:center;">💰 TOTAL GENERAL: $${totalG.toFixed(2)}</td>
             </tr>
         </table>`;
     } else {
@@ -663,7 +670,7 @@ function actualizarVistaTotalesPorDia(){
                         <td><button class="btn-reiniciar-individual" onclick="reiniciarMaterialNuevoPeriodo('${n}')">🔄 Empezar de Cero</button></td>
                     </tr>`).join('')}
                     <tr class="fila-total-general">
-                        <td colspan="4" style="text-align:center;">💰 TOTAL GENERAL INVERTIDO: $${totalG.toFixed(2)}</td>
+                        <td colspan="4" style="text-align:center;">💰 TOTAL GENERAL: $${totalG.toFixed(2)}</td>
                     </tr>
                 </table>
             </div>
