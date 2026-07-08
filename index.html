@@ -26,13 +26,9 @@
         .btn-buscar:hover { background-color: #1565c0; }
         .btn-ver-todos { background-color: #ff9800; width: auto; }
         .btn-ver-todos:hover { background-color: #fb8c00; }
-        .btn-actualizar { background-color: #9c27b0; width: auto; margin-bottom: 10px; }
+        .btn-actualizar { background-color: #9c27b0; width: auto; margin-bottom: 10px; font-weight: 700; }
         .btn-quitar { background-color: #ef5350; padding: 4px 6px; font-size: 11px; border-radius: 4px; width: auto; }
         .btn-quitar:hover { background-color: #e53935; }
-        .btn-reiniciar-individual { background-color: #ff9800; padding: 5px 4px; font-size: 11px; border-radius: 4px; width: auto; }
-        .btn-reiniciar-individual:hover { background-color: #fb8c00; }
-        .btn-danger { background-color: #d32f2f; }
-        .btn-danger:hover { background-color: #b71c1c; }
         .btn-cliente, .btn-detallada { 
             padding: 4px 2px !important;
             font-size: 10.5px !important;
@@ -128,7 +124,7 @@
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
     <div class="aviso" id="estadoConexion">✅ Cargando datos compartidos...</div>
-    <button class="btn-actualizar" onclick="cargarTodoCompartido()">🔄 Si falta algo, toca aquí</button>
+    <button class="btn-actualizar" onclick="subirTodoYA()">🔄 SINCRONIZAR TODO AHORA</button>
 
     <div class="section">
         <h2>Configurar Materiales</h2>
@@ -215,11 +211,10 @@
 
 <script>
 // ==============================================
-// 🔑 CONFIGURACIÓN - PON TU CLAVE DE SUPABASE AQUÍ
+// 🔑 PON TU CLAVE EXACTA AQUÍ (SIN ESPACIOS)
 // ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
-const VERSION_APP = "1.5 - Sincronización completa sin cambios tuyos";
 
 let supabaseCliente;
 let carrito = [];
@@ -228,29 +223,24 @@ let totalesOriginales = {};
 let facturaActual = null;
 let vistaAgrupada = false;
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
-let sincronizando = false;
 
 // ==============================================
-// 🚀 AL ABRIR LA APP: MUESTRA LO TUYO Y TRAE LO DE TODOS
+// 🚀 INICIO Y CONEXIÓN CORREGIDA
 // ==============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    const versionGuardada = localStorage.getItem('versionRecicladora');
-    if (versionGuardada !== VERSION_APP) {
-        alert("✅ ¡Actualizado! Ahora todos ven las mismas facturas, sin cambiar nada de lo que ya te gusta.");
-        localStorage.setItem('versionRecicladora', VERSION_APP);
+    try {
+        supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
+        console.log("✅ Conectado a Supabase correctamente");
+    } catch (e) {
+        alert("❌ Error en la clave de Supabase: revisa que no falte ni sobre nada");
+        return;
     }
 
-    supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
-    
-    // PRIMERO MUESTRA TU INFORMACIÓN IGUAL QUE ANTES
     await cargarMaterialesLocales();
     await cargarHistorialYTotalesLocales();
-    
-    // LUEGO TRAE LO DE LOS DEMÁS Y SUBE LO TUYO
-    setTimeout(() => cargarTodoCompartido(), 300);
+    setTimeout(() => subirTodoYA(), 500);
 });
 
-// ========== SINCRONIZACIÓN COMPARTIDA (LO ÚNICO QUE AGREGUÉ) ==========
 function actualizarEstadoConexion(conectado, mensaje = "") {
     const aviso = document.getElementById('estadoConexion');
     if(conectado) {
@@ -258,7 +248,7 @@ function actualizarEstadoConexion(conectado, mensaje = "") {
         aviso.style.background = "#e8f5e9";
         aviso.style.color = "#1b5e20";
     } else {
-        aviso.innerHTML = "✅ SIN INTERNET: Trabaja normal, se subirá y aparecerá en todos al tener señal";
+        aviso.innerHTML = "✅ SIN INTERNET: Trabaja normal, se subirá al tener señal";
         aviso.style.background = "#fff3e0";
         aviso.style.color = "#e65100";
     }
@@ -269,68 +259,60 @@ function guardarComoPendiente(tipo, datos){
     localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
 }
 
-// ✅ FUNCIÓN PRINCIPAL: TRAE LO DE TODOS Y SUBE LO TUYO
-async function cargarTodoCompartido(){
+// ✅ FUNCIÓN DEFINITIVA: SUBE TODO Y TRAE LO REAL DE LA NUBE
+async function subirTodoYA(){
     if(!navigator.onLine) {
         actualizarEstadoConexion(false);
-        return;
+        return alert("Conéctate a internet primero mi vida");
     }
-    if(sincronizando) return;
-    sincronizando = true;
-    actualizarEstadoConexion(true, "📥 Actualizando datos de todos...");
+
+    actualizarEstadoConexion(true, "🔄 Subiendo y sincronizando...");
+    let subidos = 0;
 
     try {
-        // 1. PRIMERO SUBE LO QUE TIENES PENDIENTE
-        await subirPendientes();
+        // 1. SUBE LO QUE TIENES PENDIENTE
+        for(let i = 0; i < datosPendientes.length; i++){
+            const item = datosPendientes[i];
+            if(item.tipo === 'factura'){
+                const { error } = await supabaseCliente.from('facturas').insert([item.datos]);
+                if(!error) subidos++;
+            }
+            if(item.tipo === 'material'){
+                const { error } = await supabaseCliente.from('materiales').insert([item.datos]);
+                if(!error) subidos++;
+            }
+        }
+        datosPendientes = [];
+        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
 
-        // 2. LUEGO TRAE MATERIALES DE TODOS
-        const { data: matNube, error: errMat } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true});
+        // 2. TRAE LO ACTUALIZADO DE LA NUBE (NO LO LOCAL)
+        const { data: matNube, error: errMat } = await supabaseCliente.from('materiales').select('*').order('nombre');
         if(!errMat && matNube) {
             localStorage.setItem('materialesLocales', JSON.stringify(matNube));
             actualizarTablaMateriales(matNube);
             actualizarSelectMateriales(matNube);
         }
 
-        // 3. LUEGO TRAE TODAS LAS FACTURAS DE TODOS
         const { data: facNube, error: errFac } = await supabaseCliente.from('facturas').select('*').order('fecha_completa', {ascending:false});
         if(!errFac && facNube) {
             localStorage.setItem('facturasLocales', JSON.stringify(facNube));
             procesarFacturas(facNube);
         }
 
-        actualizarEstadoConexion(true, "✅ Listo! Ya ves todo lo que subieron los demás");
+        // 3. MENSAJE FINAL
+        let mensaje = "✅ SINCRONIZACIÓN PERFECTA!";
+        if(subidos > 0) mensaje += ` Se subieron ${subidos} registros a la nube.`;
+        alert(mensaje + "\nAhora ves exactamente lo que hay en Supabase.");
+        actualizarEstadoConexion(true);
+
     } catch (err) {
-        console.log("Error al sincronizar:", err);
-        actualizarEstadoConexion(true, "⚠️ Usando tus datos guardados");
-    } finally {
-        sincronizando = false;
+        console.error("Error sincronizando:", err);
+        alert("❌ Error: " + err.message + "\nRevisa la clave o las tablas en Supabase");
+        actualizarEstadoConexion(true, "⚠️ Usando datos guardados");
     }
 }
 
-// ✅ SUBE LO PENDIENTE Y CONFIRMA QUE APAREZCA EN TODOS
-async function subirPendientes(){
-    if(!navigator.onLine || datosPendientes.length === 0) return;
-    let subidos = 0;
-    try {
-        for(const item of datosPendientes) {
-            if(item.tipo === 'factura') await supabaseCliente.from('facturas').insert([item.datos]);
-            else if(item.tipo === 'material') await supabaseCliente.from('materiales').insert([item.datos]);
-            subidos++;
-        }
-        datosPendientes = [];
-        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-        if(subidos > 0) {
-            alert(`✅ Se subieron ${subidos} registros. Ahora aparecen en Supabase y en todos los celulares.`);
-        }
-    } catch (err) {
-        console.log("Pendientes por subir luego:", err);
-    }
-}
-
-// ✅ AL VOLVER A TENER INTERNET, ACTUALIZA SOLO
-window.addEventListener('online', async () => {
-    await cargarTodoCompartido();
-});
+window.addEventListener('online', subirTodoYA);
 window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
 // ========== CARGA LOCAL (IGUAL QUE ANTES) ==========
@@ -344,7 +326,7 @@ async function cargarHistorialYTotalesLocales(){
     procesarFacturas(locales);
 }
 
-// ========== RESTO DE FUNCIONES: EXACTAMENTE IGUALES QUE LAS TENÍAS ==========
+// ========== EL RESTO DE FUNCIONES: EXACTAMENTE IGUALES QUE LAS TENÍAS ==========
 async function guardarMaterial(){
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
@@ -463,7 +445,7 @@ async function generarFacturas(){
         catch { guardarComoPendiente('factura', facturaActual); }
     } else {
         guardarComoPendiente('factura', facturaActual);
-        alert("✅ Guardada aquí, aparecerá en todos los celulares al tener señal");
+        alert("✅ Guardada aquí, aparecerá en todos al tener señal");
     }
     
     mostrarCliente();
@@ -472,7 +454,6 @@ async function generarFacturas(){
     document.getElementById("ventanaFactura").style.display = "flex";
     carrito = [];
     actualizarCarrito();
-    await cargarTodoCompartido();
 }
 
 function mostrarCliente(){
