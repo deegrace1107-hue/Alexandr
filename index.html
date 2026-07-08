@@ -26,6 +26,7 @@
         .btn-buscar:hover { background-color: #1565c0; }
         .btn-ver-todos { background-color: #ff9800; width: auto; }
         .btn-ver-todos:hover { background-color: #fb8c00; }
+        .btn-actualizar { background-color: #9c27b0; width: auto; margin-bottom: 10px; }
         .btn-quitar { background-color: #ef5350; padding: 4px 6px; font-size: 11px; border-radius: 4px; width: auto; }
         .btn-quitar:hover { background-color: #e53935; }
         .btn-reiniciar-individual { background-color: #ff9800; padding: 5px 4px; font-size: 11px; border-radius: 4px; width: auto; }
@@ -126,7 +127,8 @@
 <div class="container">
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso" id="estadoConexion">✅ Cargando... | Funciona sin internet</div>
+    <div class="aviso" id="estadoConexion">✅ Cargando datos compartidos...</div>
+    <button class="btn-actualizar" onclick="cargarTodoDesdeNube()">🔄 Si falta algo, toca aquí para actualizar</button>
 
     <div class="section">
         <h2>Configurar Materiales</h2>
@@ -191,9 +193,9 @@
     </div>
 
     <div class="section historial">
-        <h2>📋 Historial de Compras</h2>
+        <h2>📋 Historial de Compras (de todos)</h2>
         <div id="listaHistorial">
-            <p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas</p>
+            <p style="text-align:center; color:#666; padding:10px;">Cargando todos los registros...</p>
         </div>
     </div>
 </div>
@@ -217,7 +219,7 @@
 // ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
-const VERSION_APP = "1.4";
+const VERSION_APP = "1.5 - Todos ven los mismos datos";
 
 let supabaseCliente;
 let carrito = [];
@@ -229,37 +231,32 @@ let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 let sincronizando = false;
 
 // ==============================================
-// 🚀 AL INICIAR: MUESTRA LOCAL DE INMEDIATO
+// 🚀 AL ABRIR LA APP: PRIMERO TRAE LO DE TODOS
 // ==============================================
 document.addEventListener('DOMContentLoaded', async () => {
     const versionGuardada = localStorage.getItem('versionRecicladora');
     if (versionGuardada !== VERSION_APP) {
-        alert("✅ ¡Actualizado! Ahora al recuperar internet se actualiza todo automáticamente y la factura tiene la hora completa.");
+        alert("✅ ¡Actualizado! Ahora todos ven las mismas facturas, tiene fecha y hora, y funciona sin internet.");
         localStorage.setItem('versionRecicladora', VERSION_APP);
     }
 
     supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
     
-    // PRIMERO CARGA Y MUESTRA LO QUE TIENES AQUÍ SIN ESPERAR NADA
-    await cargarMateriales();
-    await cargarHistorialYTotales();
-    actualizarEstadoConexion(navigator.onLine);
-
-    // LUEGO SINCRONIZA EN SEGUNDO PLANO
-    setTimeout(() => sincronizarPendientes(), 500);
+    // ✅ LO MÁS IMPORTANTE: Al abrir, baja primero todo lo que subieron los demás
+    await cargarTodoDesdeNube();
 });
 
 // ========== GESTIÓN DE CONEXIÓN Y SINCRONIZACIÓN ==========
-function actualizarEstadoConexion(conectado) {
+function actualizarEstadoConexion(conectado, mensaje = "") {
     const aviso = document.getElementById('estadoConexion');
     if(conectado) {
-        aviso.innerHTML = "✅ Conectado | Actualizando datos...";
+        aviso.innerHTML = mensaje || "✅ Conectado | Todos ven los mismos datos";
         aviso.style.background = "#e8f5e9";
         aviso.style.color = "#1b5e20";
     } else {
-        aviso.innerHTML = "✅ SIN INTERNET: Trabaja normal, se guarda todo aquí";
-        aviso.style.background = "#e3f2fd";
-        aviso.style.color = "#0d47a1";
+        aviso.innerHTML = "✅ SIN INTERNET: Trabaja normal, se sube al tener señal";
+        aviso.style.background = "#fff3e0";
+        aviso.style.color = "#e65100";
     }
 }
 
@@ -268,7 +265,56 @@ function guardarComoPendiente(tipo, datos){
     localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
 }
 
-// ✅ FUNCIÓN ARREGLADA: AL TERMINAR DE SUBIR REFRESCA TODA LA PANTALLA
+// ✅ FUNCIÓN PRINCIPAL: TRAE LO DE TODOS LOS CELULARES
+async function cargarTodoDesdeNube() {
+    if(!navigator.onLine) {
+        actualizarEstadoConexion(false);
+        usarDatosLocales();
+        return;
+    }
+
+    actualizarEstadoConexion(true, "📥 Descargando registros de todos...");
+
+    try {
+        // Trae materiales compartidos
+        const { data: matNube, error: e1 } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true});
+        if(!e1 && matNube) {
+            localStorage.setItem('materialesLocales', JSON.stringify(matNube));
+            actualizarTablaMateriales(matNube);
+            actualizarSelectMateriales(matNube);
+        }
+
+        // Trae TODAS las facturas de TODOS
+        const { data: facNube, error: e2 } = await supabaseCliente.from('facturas').select('*').order('fecha_completa', {ascending:false});
+        if(!e2 && facNube) {
+            localStorage.setItem('facturasLocales', JSON.stringify(facNube));
+            procesarFacturas(facNube);
+        }
+
+        // Sube lo que falte de este celular
+        await sincronizarPendientes();
+        actualizarEstadoConexion(true, "✅ Listo! Ya ves todo lo que hicieron los demás");
+    } catch (err) {
+        console.log("Error al traer datos:", err);
+        usarDatosLocales();
+    }
+}
+
+async function usarDatosLocales() {
+    const matLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+    const facLocales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
+    actualizarTablaMateriales(matLocales);
+    actualizarSelectMateriales(matLocales);
+    procesarFacturas(facLocales);
+}
+
+// ✅ AL VOLVER A TENER INTERNET, TRAE LO DE LOS DEMÁS SOLO
+window.addEventListener('online', async () => {
+    await cargarTodoDesdeNube();
+});
+window.addEventListener('offline', () => actualizarEstadoConexion(false));
+
+// ✅ SUBE LO PENDIENTE Y NO BORRA NADA
 async function sincronizarPendientes(){
     if(sincronizando || datosPendientes.length === 0 || !navigator.onLine) return;
     sincronizando = true;
@@ -286,49 +332,18 @@ async function sincronizarPendientes(){
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
         
         if(subidos > 0) {
-            alert(`✅ Se subieron ${subidos} registros nuevos. Actualizando pantalla...`);
-            // ✅ REFRESCA TODO PARA QUE VEAS LOS DATOS ACTUALIZADOS
-            await cargarMateriales();
-            await cargarHistorialYTotales();
+            alert(`✅ Se subieron ${subidos} registros. Ahora aparecerán en todos los celulares.`);
+            await cargarTodoDesdeNube();
         }
 
     } catch (err) {
         console.log("Pendientes por subir luego:", err);
     } finally {
         sincronizando = false;
-        actualizarEstadoConexion(true);
     }
 }
 
-// ✅ AL VOLVER A TENER INTERNET, ACTUALIZA SOLO
-window.addEventListener('online', async () => {
-    actualizarEstadoConexion(true);
-    await sincronizarPendientes();
-});
-window.addEventListener('offline', () => actualizarEstadoConexion(false));
-
-// ========== CARGA DE DATOS ==========
-async function cargarMateriales(){
-    const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    actualizarTablaMateriales(datosLocales);
-    actualizarSelectMateriales(datosLocales);
-
-    try {
-        const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true});
-        if(!error && data) {
-            const mapUnico = new Map();
-            data.forEach(m => mapUnico.set(m.nombre.toLowerCase(), m));
-            datosLocales.forEach(m => { if(!mapUnico.has(m.nombre.toLowerCase())) mapUnico.set(m.nombre.toLowerCase(), m); });
-            const datosFinales = Array.from(mapUnico.values());
-            localStorage.setItem('materialesLocales', JSON.stringify(datosFinales));
-            actualizarTablaMateriales(datosFinales);
-            actualizarSelectMateriales(datosFinales);
-        }
-    } catch (err) {
-        console.log("Usando materiales locales");
-    }
-}
-
+// ========== CARGA DE MATERIALES ==========
 async function guardarMaterial(){
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
@@ -350,6 +365,7 @@ async function guardarMaterial(){
         catch { guardarComoPendiente('material', nuevoMaterial); }
     } else {
         guardarComoPendiente('material', nuevoMaterial);
+        alert("✅ Guardado aquí, aparecerá en todos al tener señal");
     }
     
     document.getElementById('nombreMaterial').value = '';
@@ -365,7 +381,7 @@ function actualizarTablaMateriales(lista){
             <td>$${m.precio.toFixed(2)}</td>
             <td><button class="btn-danger" onclick="eliminarMaterial('${m.nombre}')">Eliminar</button></td>
         </tr>
-    `).join('');
+    `).join('') || '<tr><td colspan="4" style="text-align:center;">Sin materiales</td></tr>';
 }
 
 async function eliminarMaterial(nombre){
@@ -377,13 +393,13 @@ async function eliminarMaterial(nombre){
 
     if(navigator.onLine) {
         try { await supabaseCliente.from('materiales').delete().eq('nombre', nombre); }
-        catch { alert("Eliminado aquí, se actualizará en la nube luego"); }
+        catch { alert("Eliminado aquí, se actualizará en todos al tener internet"); }
     }
 }
 
 function actualizarSelectMateriales(lista){
     const select = document.getElementById('materialSeleccionado');
-    select.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio.toFixed(2)}/${m.unidad}</option>`).join('');
+    select.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio.toFixed(2)}/${m.unidad}</option>`).join('') || '<option value="">Sin materiales</option>';
 }
 
 // ========== CARRITO Y FACTURAS ==========
@@ -447,7 +463,7 @@ async function generarFacturas(){
         catch { guardarComoPendiente('factura', facturaActual); }
     } else {
         guardarComoPendiente('factura', facturaActual);
-        alert("✅ Guardada en tu celular, se subirá sola al tener internet");
+        alert("✅ Guardada aquí, aparecerá en todos los celulares al tener señal");
     }
     
     mostrarCliente();
@@ -456,7 +472,7 @@ async function generarFacturas(){
     document.getElementById("ventanaFactura").style.display = "flex";
     carrito = [];
     actualizarCarrito();
-    await cargarHistorialYTotales();
+    await cargarTodoDesdeNube();
 }
 
 // ✅ FACTURA CON FECHA Y HORA
@@ -513,23 +529,6 @@ function cerrarVentana(){
 }
 
 // ========== HISTORIAL Y TOTALES ==========
-async function cargarHistorialYTotales(){
-    let locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
-    try {
-        const { data: nube, error } = await supabaseCliente.from('facturas').select('*').order('fecha_completa', {ascending: false});
-        if(!error && nube) {
-            const mapa = new Map();
-            locales.forEach(f => mapa.set(f.fecha_completa + JSON.stringify(f.detalles), f));
-            nube.forEach(f => mapa.set(f.fecha_completa + JSON.stringify(f.detalles), f));
-            locales = Array.from(mapa.values());
-            localStorage.setItem('facturasLocales', JSON.stringify(locales));
-        }
-    } catch (err) {
-        console.log("Usando historial local");
-    }
-    procesarFacturas(locales);
-}
-
 function procesarFacturas(facturas){
     totalesPorDia = {};
     facturas.forEach(f => {
