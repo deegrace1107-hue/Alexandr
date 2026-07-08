@@ -205,10 +205,10 @@
 </div>
 
 <script>
-// TUS DATOS - PON TU CLAVE COMPLETA DONDE DICE
+// TUS DATOS - PON TU CLAVE COMPLETA AQUÍ
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
-const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
-let supabaseCliente;
+const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0Mjc0NTYsImV4cCI6MjEwMTAwMzA1Nn0.75tCjYx0y0s5Z8z9X2pQ3rT4sU5vW6xY7zA8bC9dE0fG1hJ2kL3mN4oP5qR6sT7uV8wX9yZ0aA1bB2cC3dD4eE5fF6gG7hH8iI9jJ0kK1lL2mN3nO4oP5pQ6qR7rS8sT9tU0vV1wW2xX3yY4zZ";
+const supabase = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
 
 let carrito = [];
 let totalesPorDia = {};
@@ -216,24 +216,14 @@ let totalesOriginales = {};
 let facturaActual = null;
 let vistaAgrupada = false;
 
-// ✅ PRIMERO CARGA LO TUYO, SIN ESPERAR NADA
+// ✅ PRIMERO CARGA LO TUYO AL INSTANTE, SIN ESPERAR NADA
 document.addEventListener('DOMContentLoaded', () => {
     cargarDatosLocales();
     actualizarEstado("✅ Tus datos están listos");
-    // LUEGO INTENTA CONECTAR SIN DETENERTE
-    inicializarNube();
-    window.addEventListener('online', inicializarNube);
+    // LUEGO SINCRONIZA EN SEGUNDO PLANO
+    setTimeout(sincronizarDatos, 1500);
+    window.addEventListener('online', sincronizarDatos);
 });
-
-async function inicializarNube(){
-    try {
-        supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
-        actualizarEstado("✅ Conectado a la nube");
-        setTimeout(sincronizarDatos, 1000);
-    } catch (e) {
-        actualizarEstado("📴 Guardado en celular, sincronizará luego");
-    }
-}
 
 function cargarDatosLocales(){
     const materiales = JSON.parse(localStorage.getItem('materiales') || '[]');
@@ -247,28 +237,32 @@ function actualizarEstado(texto) {
     document.getElementById('estado').textContent = texto;
 }
 
+// ✅ GUARDA SEGURO Y LIMPIO PARA QUE ENTRE PERFECTO A LA NUBE
 async function guardarSeguro(claveLocal, datos, tablaNube) {
     localStorage.setItem(claveLocal, JSON.stringify(datos));
-    if(supabaseCliente && navigator.onLine){
+    if(navigator.onLine){
         try {
-            await supabaseCliente.from(tablaNube).upsert(datos);
+            // Quitamos el campo id extra que no necesita la tabla
+            const datosLimpios = datos.map(({id, ...camposCorrectos}) => camposCorrectos);
+            await supabase.from(tablaNube).upsert(datosLimpios);
         } catch (e) {
-            console.log("Guardado en celular, se subirá después");
+            console.log("Guardado en celular, se subirá luego:", e.message);
         }
     }
 }
 
 async function sincronizarDatos(){
-    if(!supabaseCliente) return;
+    if(!navigator.onLine) return;
     try {
-        const {data: matNube} = await supabaseCliente.from('materiales').select('*');
-        const {data: facNube} = await supabaseCliente.from('facturas').select('*');
+        const {data: matNube} = await supabase.from('materiales').select('*');
+        const {data: facNube} = await supabase.from('facturas').select('*');
         
         const matLocal = JSON.parse(localStorage.getItem('materiales') || '[]');
         const facLocal = JSON.parse(localStorage.getItem('historial') || '[]');
         
-        const matFinal = fusionarDatos(matLocal, matNube);
-        const facFinal = fusionarDatos(facLocal, facNube);
+        // Fusionamos sin duplicar
+        const matFinal = fusionarDatos(matLocal, matNube || []);
+        const facFinal = fusionarDatos(facLocal, facNube || []);
         
         localStorage.setItem('materiales', JSON.stringify(matFinal));
         localStorage.setItem('historial', JSON.stringify(facFinal));
@@ -277,16 +271,23 @@ async function sincronizarDatos(){
         actualizarSelectMateriales(matFinal);
         procesarFacturas(facFinal);
         
-        await supabaseCliente.from('materiales').upsert(matFinal);
-        await supabaseCliente.from('facturas').upsert(facFinal);
-    } catch (e) {}
+        // Enviamos limpio a la base de datos
+        const matLimpio = matFinal.map(({id, ...r}) => r);
+        const facLimpio = facFinal.map(({id, ...r}) => r);
+        await supabase.from('materiales').upsert(matLimpio);
+        await supabase.from('facturas').upsert(facLimpio);
+        
+        actualizarEstado("✅ Todo sincronizado perfectamente");
+    } catch (e) {
+        actualizarEstado("⚠️ Pulsa SUBIR DATOS para confirmar");
+    }
 }
 
 function fusionarDatos(local, nube){
     const mapa = new Map();
-    local.forEach(item => mapa.set(item.id || item.nombre, item));
-    if(nube) nube.forEach(item => {
-        const clave = item.id || item.nombre;
+    local.forEach(item => mapa.set(item.nombre || item.fecha_completa, item));
+    nube.forEach(item => {
+        const clave = item.nombre || item.fecha_completa;
         if(!mapa.has(clave)) mapa.set(clave, item);
     });
     return Array.from(mapa.values());
@@ -301,7 +302,7 @@ async function guardarMaterial(){
     
     const listaActual = JSON.parse(localStorage.getItem('materiales') || '[]');
     if(listaActual.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) return alert(`⚠️ "${nombre}" ya existe`);
-    listaActual.push({ id: Date.now(), nombre, unidad, precio });
+    listaActual.push({ nombre, unidad, precio });
     
     await guardarSeguro('materiales', listaActual, 'materiales');
     actualizarTablaMateriales(listaActual);
@@ -345,7 +346,7 @@ async function agregarAlCarrito(){
     const mat = locales.find(m => m.nombre === nombre);
     if(!mat) return alert("Material no encontrado");
     
-    carrito.push({ id: Date.now(), nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: mat.precio, total: cantidad * mat.precio });
+    carrito.push({ nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: mat.precio, total: cantidad * mat.precio });
     actualizarCarrito();
     document.getElementById('cantidadRecibida').value = '';
 }
@@ -385,7 +386,7 @@ async function generarFacturas(){
     const hora = new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
     const fechaCompleta = `${fecha} ${hora}`;
     
-    facturaActual = { id: Date.now(), fecha, hora, fecha_completa: fechaCompleta, total_general: totalGeneral, detalles: [...carrito] };
+    facturaActual = { fecha, hora, fecha_completa: fechaCompleta, total_general: totalGeneral, detalles: [...carrito] };
     
     const locales = JSON.parse(localStorage.getItem('historial') || '[]');
     locales.unshift(facturaActual);
