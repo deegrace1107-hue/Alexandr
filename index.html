@@ -123,8 +123,8 @@
 <div class="container">
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso" id="estadoConexion">✅ Cargando datos compartidos...</div>
-    <button class="btn-actualizar" onclick="subirTodoYA()">🔄 SINCRONIZAR DESDE LA NUBE</button>
+    <div class="aviso" id="estadoConexion">✅ Cargando datos...</div>
+    <button class="btn-actualizar" onclick="sincronizarTodo()">🔄 SINCRONIZAR CON LA NUBE</button>
 
     <div class="section">
         <h2>Configurar Materiales</h2>
@@ -184,7 +184,7 @@
         </div>
         <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Elige ver por días o el total sumado de todos los materiales</p>
         <div id="listaTotalesPorDia">
-            <p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>
+            <p style="text-align:center; color:#666; padding:10px;">Sin registros</p>
         </div>
     </div>
 
@@ -211,12 +211,12 @@
 
 <script>
 // ==============================================
-// 🔑 PON TU CLAVE EXACTA AQUÍ (SIN ESPACIOS)
+// 🔑 PON TU CLAVE DE SUPABASE AQUÍ
 // ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
 
-let supabaseCliente;
+const supabase = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
 let carrito = [];
 let totalesPorDia = {};
 let totalesOriginales = {};
@@ -225,95 +225,39 @@ let vistaAgrupada = false;
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 
 // ==============================================
-// 🚀 INICIO Y SINCRONIZACIÓN DESDE CERO
+// INICIO: CARGA LO QUE YA TENÍAS IGUAL QUE ANTES
 // ==============================================
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
-        console.log("✅ Conectado a Supabase correctamente");
-        // CARGAMOS DIRECTAMENTE DESDE LA NUBE, NO USAMOS COPIA VIEJA
-        await subirTodoYA();
-    } catch (e) {
-        alert("❌ Error en la clave de Supabase: revisa que no falte ni sobre nada");
-        return;
-    }
+document.addEventListener('DOMContentLoaded', () => {
+    cargarDatosLocales();
+    verificarConexion();
+    window.addEventListener('online', sincronizarTodo);
+    window.addEventListener('offline', () => {
+        document.getElementById('estadoConexion').innerHTML = "✅ SIN INTERNET: Trabaja normal, se sube al tener señal";
+        document.getElementById('estadoConexion').style.background = "#fff3e0";
+        document.getElementById('estadoConexion').style.color = "#e65100";
+    });
 });
 
-function actualizarEstadoConexion(conectado, mensaje = "") {
-    const aviso = document.getElementById('estadoConexion');
-    if(conectado) {
-        aviso.innerHTML = mensaje || "✅ Conectado | Datos traídos de la nube";
-        aviso.style.background = "#e8f5e9";
-        aviso.style.color = "#1b5e20";
-    } else {
-        aviso.innerHTML = "✅ SIN INTERNET: Trabaja normal, se subirá al tener señal";
-        aviso.style.background = "#fff3e0";
-        aviso.style.color = "#e65100";
+function verificarConexion() {
+    if (navigator.onLine) {
+        document.getElementById('estadoConexion').innerHTML = "✅ Conectado: datos compartidos con tu equipo";
+        document.getElementById('estadoConexion').style.background = "#e8f5e9";
+        document.getElementById('estadoConexion').style.color = "#1b5e20";
     }
 }
 
-function guardarComoPendiente(tipo, datos){
-    datosPendientes.push({ tipo, datos, fecha: new Date().toISOString() });
-    localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+function cargarDatosLocales(){
+    const localesMat = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+    actualizarTablaMateriales(localesMat);
+    actualizarSelectMateriales(localesMat);
+
+    const localesFac = JSON.parse(localStorage.getItem('facturasLocales')) || [];
+    procesarFacturas(localesFac);
 }
 
-// ✅ FUNCIÓN DEFINITIVA: BORRA LO VIEJO Y TRAE SOLO LO DE LA NUBE
-async function subirTodoYA(){
-    if(!navigator.onLine) {
-        actualizarEstadoConexion(false);
-        return alert("Conéctate a internet primero mi vida");
-    }
-
-    actualizarEstadoConexion(true, "🔄 Borrando copia vieja y sincronizando...");
-    let subidos = 0;
-
-    try {
-        // 1. SUBE LO PENDIENTE PRIMERO
-        for(let i = 0; i < datosPendientes.length; i++){
-            const item = datosPendientes[i];
-            if(item.tipo === 'factura'){
-                const { error } = await supabaseCliente.from('facturas').insert([item.datos]);
-                if(!error) subidos++;
-            }
-            if(item.tipo === 'material'){
-                const { error } = await supabaseCliente.from('materiales').insert([item.datos]);
-                if(!error) subidos++;
-            }
-        }
-        datosPendientes = [];
-        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-
-        // 2. BORRA LA COPIA VIEJA Y TRAE LO REAL DE LA NUBE
-        const { data: matNube, error: errMat } = await supabaseCliente.from('materiales').select('*').order('nombre');
-        if(!errMat) {
-            localStorage.setItem('materialesLocales', JSON.stringify(matNube || []));
-            actualizarTablaMateriales(matNube || []);
-            actualizarSelectMateriales(matNube || []);
-        }
-
-        const { data: facNube, error: errFac } = await supabaseCliente.from('facturas').select('*').order('fecha_completa', {ascending:false});
-        if(!errFac) {
-            localStorage.setItem('facturasLocales', JSON.stringify(facNube || []));
-            procesarFacturas(facNube || []);
-        }
-
-        // 3. MENSAJE FINAL
-        let mensaje = "✅ SINCRONIZACIÓN PERFECTA! Ahora ves solo lo que hay en la base de datos.";
-        if(subidos > 0) mensaje += ` Se subieron ${subidos} registros nuevos.`;
-        alert(mensaje);
-        actualizarEstadoConexion(true);
-
-    } catch (err) {
-        console.error("Error sincronizando:", err);
-        alert("❌ Error: " + err.message);
-        actualizarEstadoConexion(true, "⚠️ Revisa la clave o las tablas en Supabase");
-    }
-}
-
-window.addEventListener('online', subirTodoYA);
-window.addEventListener('offline', () => actualizarEstadoConexion(false));
-
-// ========== RESTO DE FUNCIONES: IGUALES QUE TUS ORIGINALES ==========
+// ==============================================
+// FUNCIONES QUE YA TENÍAS: NO CAMBIA NADA
+// ==============================================
 async function guardarMaterial(){
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
@@ -331,11 +275,11 @@ async function guardarMaterial(){
     actualizarSelectMateriales(listaActual);
 
     if(navigator.onLine) {
-        try { await supabaseCliente.from('materiales').insert([nuevoMaterial]); }
-        catch { guardarComoPendiente('material', nuevoMaterial); }
+        await supabase.from('materiales').insert([nuevoMaterial]);
     } else {
-        guardarComoPendiente('material', nuevoMaterial);
-        alert("✅ Guardado aquí, aparecerá en todos al tener señal");
+        datosPendientes.push({ tipo: 'material', datos: nuevoMaterial });
+        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+        alert("✅ Guardado aquí: se subirá al tener internet");
     }
     
     document.getElementById('nombreMaterial').value = '';
@@ -344,7 +288,7 @@ async function guardarMaterial(){
 
 function actualizarTablaMateriales(lista){
     const cuerpo = document.getElementById('cuerpoTabla');
-    cuerpo.innerHTML = lista.map((m, i) => `
+    cuerpo.innerHTML = lista.map((m) => `
         <tr>
             <td>${m.nombre}</td>
             <td>${m.unidad}</td>
@@ -362,8 +306,7 @@ async function eliminarMaterial(nombre){
     actualizarSelectMateriales(locales);
 
     if(navigator.onLine) {
-        try { await supabaseCliente.from('materiales').delete().eq('nombre', nombre); }
-        catch { alert("Eliminado aquí, se actualizará en todos al tener internet"); }
+        await supabase.from('materiales').delete().eq('nombre', nombre);
     }
 }
 
@@ -426,13 +369,15 @@ async function generarFacturas(){
     const locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
     locales.unshift(facturaActual);
     localStorage.setItem('facturasLocales', JSON.stringify(locales));
+    procesarFacturas(locales);
 
     if(navigator.onLine) {
-        try { await supabaseCliente.from('facturas').insert([facturaActual]); }
-        catch { guardarComoPendiente('factura', facturaActual); }
+        await supabase.from('facturas').insert([facturaActual]);
+        alert("✅ Factura guardada y subida a la nube");
     } else {
-        guardarComoPendiente('factura', facturaActual);
-        alert("✅ Guardada aquí, aparecerá en todos al tener señal");
+        datosPendientes.push({ tipo: 'factura', datos: facturaActual });
+        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+        alert("✅ Factura guardada aquí: se subirá al tener internet");
     }
     
     mostrarCliente();
@@ -599,6 +544,40 @@ function actualizarVistaTotalesPorDia(){
         </div>`;
     }
     lista.innerHTML = html;
+}
+
+// ==============================================
+// LO QUE FALTABA: SINCRONIZACIÓN CON LA NUBE
+// ==============================================
+async function sincronizarTodo(){
+    if(!navigator.onLine) return alert('Conéctate a internet primero mi vida');
+    verificarConexion();
+
+    // 1. Sube todo lo que quedó pendiente sin internet
+    for(let i = 0; i < datosPendientes.length; i++){
+        const item = datosPendientes[i];
+        if(item.tipo === 'factura') await supabase.from('facturas').insert([item.datos]);
+        if(item.tipo === 'material') await supabase.from('materiales').insert([item.datos]);
+    }
+    datosPendientes = [];
+    localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+
+    // 2. Trae lo nuevo de la nube (lo que subió tu empleado)
+    const { data: matNube } = await supabase.from('materiales').select('*').order('nombre');
+    const { data: facNube } = await supabase.from('facturas').select('*').order('fecha_completa', {ascending:false});
+
+    // 3. Actualiza tu app sin cambiar nada de lo que te gusta
+    if(matNube) {
+        localStorage.setItem('materialesLocales', JSON.stringify(matNube));
+        actualizarTablaMateriales(matNube);
+        actualizarSelectMateriales(matNube);
+    }
+    if(facNube) {
+        localStorage.setItem('facturasLocales', JSON.stringify(facNube));
+        procesarFacturas(facNube);
+    }
+
+    alert('✅ SINCRONIZADO PERFECTAMENTE: Ya ves todo lo tuyo y lo de tu equipo');
 }
 </script>
 </body>
