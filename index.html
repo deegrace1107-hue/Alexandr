@@ -218,7 +218,7 @@
 // 🔑 PON TU CLAVE AQUÍ
 // ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
-const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
+const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0Mjc0NTYsImV4cCI6MjEwMTAwMzA1Nn0.75tCjYx0y0s5Z8z9X2pQ3rT4sU5vW6xY7zA8bC9dE0fG1hJ2kL3mN4oP5qR6sT7uV8wX9yZ0aA1bB2cC3dD4eE5fF6gG7hH8iI9jJ0kK1lL2mN3nO4oP5pQ6qR7rS8sT9tU0vV1wW2xX3yY4zZ";
 
 let supabaseCliente;
 let carrito = [];
@@ -446,7 +446,9 @@ async function generarFacturas(){
     if(carrito.length === 0) return alert('Agrega al menos una pesada');
     const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
     const fecha = new Date().toLocaleDateString('es-EC');
-    facturaActual = { fecha, total_general: totalGeneral, detalles: [...carrito] };
+    // ✅ AGREGAMOS LA HORA EXACTA
+    const hora = new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+    facturaActual = { fecha, hora, total_general: totalGeneral, detalles: [...carrito] };
     
     try {
         await supabaseCliente.from('facturas').insert([facturaActual]);
@@ -464,7 +466,7 @@ async function generarFacturas(){
     await cargarHistorialYTotales();
 }
 
-// ========== FACTURAS ==========
+// ========== FACTURAS (AHORA CON FECHA Y HORA) ==========
 function mostrarCliente(){
     if(!facturaActual) return;
     let agrupado = {};
@@ -479,6 +481,7 @@ function mostrarCliente(){
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">RECIBO DE PAGO - CLIENTE</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
+        <p style="font-size:14px;"><strong>Hora:</strong> ${facturaActual.hora}</p>
         <p style="font-size:14px;"><strong>Recicladora Alexander</strong></p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
         <table class="tabla-factura">
@@ -497,6 +500,7 @@ function mostrarDetallada(){
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">FACTURA DETALLADA - CONTROL</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
+        <p style="font-size:14px;"><strong>Hora:</strong> ${facturaActual.hora}</p>
         <p style="font-size:14px;"><strong>Recicladora Alexander</strong></p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
         <table class="tabla-factura">
@@ -571,9 +575,10 @@ function procesarFacturas(facturas){
                 </div>
                 <div class="contenido-fechas">
                     <table class="tabla-resumen">
-                        <tr><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
+                        <tr><th>Hora</th><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
                         ${listaFacturas.map(f => `
                         <tr>
+                            <td>${f.hora || 'Sin registro'}</td>
                             <td>$${f.total_general.toFixed(2)}</td>
                             <td>
                                 <button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "cliente")'>Ver</button>
