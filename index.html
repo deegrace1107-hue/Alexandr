@@ -123,7 +123,7 @@
 <div class="container">
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso" id="estadoConexion">✅ Cargando datos...</div>
+    <div class="aviso" id="estadoConexion">✅ Cargando tus datos...</div>
     <button class="btn-actualizar" onclick="sincronizarTodo()">🔄 SINCRONIZAR CON LA NUBE</button>
 
     <div class="section">
@@ -184,14 +184,14 @@
         </div>
         <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Elige ver por días o el total sumado de todos los materiales</p>
         <div id="listaTotalesPorDia">
-            <p style="text-align:center; color:#666; padding:10px;">Sin registros</p>
+            <p style="text-align:center; color:#666; padding:10px;">Cargando...</p>
         </div>
     </div>
 
     <div class="section historial">
         <h2>📋 Historial de Compras (de todos)</h2>
         <div id="listaHistorial">
-            <p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas</p>
+            <p style="text-align:center; color:#666; padding:10px;">Cargando...</p>
         </div>
     </div>
 </div>
@@ -225,9 +225,18 @@ let vistaAgrupada = false;
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 
 // ==============================================
-// INICIO: CARGA LO QUE YA TENÍAS IGUAL QUE ANTES
+// ✅ ARREGLAMOS: TRAE TUS DATOS ANTIGUOS AUTOMÁTICAMENTE
 // ==============================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Convierte tus datos viejos al formato nuevo sin perder nada
+    if (!localStorage.getItem('materialesLocales') && localStorage.getItem('materiales')) {
+        localStorage.setItem('materialesLocales', localStorage.getItem('materiales'));
+    }
+    if (!localStorage.getItem('facturasLocales') && localStorage.getItem('historial')) {
+        localStorage.setItem('facturasLocales', localStorage.getItem('historial'));
+    }
+
+    // Ahora carga todo normalmente
     cargarDatosLocales();
     verificarConexion();
     window.addEventListener('online', sincronizarTodo);
@@ -256,7 +265,7 @@ function cargarDatosLocales(){
 }
 
 // ==============================================
-// FUNCIONES QUE YA TENÍAS: NO CAMBIA NADA
+// FUNCIONES ORIGINALES IGUALES, CON FECHA Y HORA
 // ==============================================
 async function guardarMaterial(){
     const nombre = document.getElementById('nombreMaterial').value.trim();
@@ -547,13 +556,13 @@ function actualizarVistaTotalesPorDia(){
 }
 
 // ==============================================
-// LO QUE FALTABA: SINCRONIZACIÓN CON LA NUBE
+// SINCRONIZACIÓN CON LA NUBE QUE FALTABA
 // ==============================================
 async function sincronizarTodo(){
     if(!navigator.onLine) return alert('Conéctate a internet primero mi vida');
     verificarConexion();
 
-    // 1. Sube todo lo que quedó pendiente sin internet
+    // Sube todo lo que quedó pendiente sin internet
     for(let i = 0; i < datosPendientes.length; i++){
         const item = datosPendientes[i];
         if(item.tipo === 'factura') await supabase.from('facturas').insert([item.datos]);
@@ -562,11 +571,11 @@ async function sincronizarTodo(){
     datosPendientes = [];
     localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
 
-    // 2. Trae lo nuevo de la nube (lo que subió tu empleado)
+    // Trae lo nuevo de la nube (lo que subió tu empleado)
     const { data: matNube } = await supabase.from('materiales').select('*').order('nombre');
     const { data: facNube } = await supabase.from('facturas').select('*').order('fecha_completa', {ascending:false});
 
-    // 3. Actualiza tu app sin cambiar nada de lo que te gusta
+    // Actualiza sin perder nada
     if(matNube) {
         localStorage.setItem('materialesLocales', JSON.stringify(matNube));
         actualizarTablaMateriales(matNube);
