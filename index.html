@@ -270,14 +270,14 @@ async function sincronizarPendientes(){
                     
                     if(!error) {
                         subidos++;
-                        console.log("✅ Subida exitosa con fecha y hora");
+                        console.log("✅ Subida exitosa");
                     } else {
-                        console.log("❌ Error Supabase:", error.message);
+                        console.log("❌ Error:", error.message);
                         quedanPendientes.push(item);
                     }
                 }
             } catch (err) {
-                console.log("⚠️ Error conexión:", err);
+                console.log("⚠️ Sin conexión:", err);
                 quedanPendientes.push(item);
             }
         }
@@ -285,7 +285,7 @@ async function sincronizarPendientes(){
         datosPendientes = quedanPendientes;
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
         
-        if(subidos > 0) alert(`✅ Se subieron ${subidos} compras completas a tu base!`);
+        if(subidos > 0) alert(`✅ Se subieron ${subidos} compras a tu base!`);
     } finally {
         sincronizando = false;
     }
@@ -328,7 +328,7 @@ async function guardarMaterial(){
 
     try {
         const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
-        alert(!error ? '✅ Material guardado en nube' : '⚠️ Guardado en celular, se subirá luego');
+        alert(!error ? '✅ Guardado en nube' : '⚠️ Guardado en celular');
     } catch {
         datosPendientes.push({tipo:'material', datos:nuevo});
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
@@ -364,7 +364,7 @@ function actualizarSelectMateriales(lista){
     document.getElementById('materialSeleccionado').innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio.toFixed(2)}/${m.unidad}</option>`).join('');
 }
 
-// ========== COMPRAS Y FACTURAS ==========
+// ========== COMPRAS Y FACTURAS (HORA SIN ERRORES) ==========
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
@@ -401,7 +401,9 @@ async function generarFacturas(){
     
     const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
     const fecha = new Date().toLocaleDateString('es-EC');
-    const hora = new Date().toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'});
+    // ✅ FORMATO DE HORA QUE SUPABASE ACEPTA SIN ERRORES
+    const ahora = new Date();
+    const hora = `${ahora.getHours().toString().padStart(2,'0')}:${ahora.getMinutes().toString().padStart(2,'0')}`;
     const creado_el = new Date().toISOString();
     facturaActual = { fecha, hora, total_general: totalGeneral, detalles: [...carrito], creado_el };
 
@@ -415,12 +417,12 @@ async function generarFacturas(){
         }]);
         if(!error) {
             subidoBien = true;
-            alert("✅ Venta guardada CON FECHA Y HORA en tu base de datos!");
+            alert("✅ Venta guardada CON FECHA Y HORA en tu base!");
         } else {
             alert(`⚠️ No se subió: ${error.message}. Guardada en celular.`);
         }
     } catch (err) {
-        alert("⚠️ Sin internet: guardada en celular, se subirá automáticamente cuando vuelvas a tener señal");
+        alert("⚠️ Sin internet: guardada en celular, se subirá sola luego");
     }
 
     if(!subidoBien) {
@@ -512,10 +514,10 @@ function reiniciarMaterialNuevoPeriodo(nombreMaterial){
     totalesLocalesGuardados = {...totalesPorDia};
     localStorage.setItem('totalesLocales', JSON.stringify(totalesLocalesGuardados));
     actualizarVistaTotalesPorDia();
-    alert("✅ Material reiniciado correctamente");
+    alert("✅ Reiniciado correctamente");
 }
 
-// ========== HISTORIAL Y TOTALES (CORREGIDO) ==========
+// ========== HISTORIAL Y TOTALES ==========
 async function cargarHistorialYTotales(){
     let facturasNube = [];
     try {
@@ -538,7 +540,7 @@ async function cargarHistorialYTotales(){
 function actualizarVistaHistorial(facturas){
     const listaHistorial = document.getElementById('listaHistorial');
     if(facturas.length === 0){
-        listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas aún. Haz tu primera venta y aparecerá aquí.</p>`;
+        listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas aún</p>`;
         return;
     }
     const agrupado = {};
