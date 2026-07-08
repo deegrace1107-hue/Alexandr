@@ -515,50 +515,66 @@ function reiniciarMaterialNuevoPeriodo(nombreMaterial){
     alert("✅ Material reiniciado correctamente");
 }
 
-// ========== HISTORIAL Y TOTALES ==========
+// ========== HISTORIAL Y TOTALES (YA CORREGIDO, CARGA SEGURO) ==========
 async function cargarHistorialYTotales(){
     let facturasNube = [];
     try {
-        const { data, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false});
-        if(!error) facturasNube = data;
-    } catch {}
+        console.log("🔍 Buscando datos en Supabase...");
+        const { data, error } = await supabaseCliente
+            .from('facturas')
+            .select('*')
+            .order('creado_el', {ascending: false});
+        
+        if(!error) {
+            facturasNube = data || [];
+            console.log("✅ Datos de nube cargados:", facturasNube.length);
+        } else {
+            console.log("⚠️ Error al leer nube:", error.message);
+        }
+    } catch (err) {
+        console.log("⚠️ Sin conexión a nube:", err.message);
+    }
 
+    // Unimos nube y celular, sin repetir
     const todas = [...facturasNube, ...facturasLocales];
-    const unicas = Array.from(new Map(todas.map(f => [`${f.fecha}-${f.hora}-${f.total_general}`, f])).values());
+    const unicas = [];
+    const yaAgregado = new Set();
     
+    todas.forEach(f => {
+        const clave = `${f.fecha}-${f.hora}-${f.total_general}`;
+        if(!yaAgregado.has(clave)) {
+            yaAgregado.add(clave);
+            unicas.push(f);
+        }
+    });
+    
+    console.log("📋 Total de facturas a mostrar:", unicas.length);
+
+    // Cargamos totales
     if(Object.keys(totalesLocalesGuardados).length > 0){
         totalesPorDia = {...totalesLocalesGuardados};
-        actualizarVistaTotalesPorDia();
     } else {
         procesarFacturas(unicas);
+        return;
     }
+    actualizarVistaTotalesPorDia();
+    actualizarVistaHistorial(unicas); // ✅ FORZAMOS A CARGAR EL HISTORIAL
 }
 
-function procesarFacturas(facturas){
-    totalesPorDia = {};
-    facturas.forEach(f => {
-        const fecha = f.fecha;
-        if(!totalesPorDia[fecha]) totalesPorDia[fecha] = {};
-        f.detalles.forEach(item => {
-            if(!totalesPorDia[fecha][item.nombre]){
-                totalesPorDia[fecha][item.nombre] = {cantidadTotal:0, unidad:item.unidad, montoTotal:0};
-            }
-            totalesPorDia[fecha][item.nombre].cantidadTotal += item.cantidad;
-            totalesPorDia[fecha][item.nombre].montoTotal += item.total;
-        });
-    });
-    totalesLocalesGuardados = {...totalesPorDia};
-    localStorage.setItem('totalesLocales', JSON.stringify(totalesLocalesGuardados));
-    actualizarVistaTotalesPorDia();
-
+// ✅ FUNCIÓN NUEVA: MUESTRA EL HISTORIAL SIN FALLOS
+function actualizarVistaHistorial(facturas){
     const listaHistorial = document.getElementById('listaHistorial');
     if(facturas.length === 0){
-        listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas</p>`;
+        listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas aún. Haz tu primera venta y aparecerá aquí.</p>`;
         return;
     }
 
     const agrupado = {};
-    facturas.forEach(f => { if(!agrupado[f.fecha]) agrupado[f.fecha] = []; agrupado[f.fecha].push(f); });
+    facturas.forEach(f => {
+        if(!agrupado[f.fecha]) agrupado[f.fecha] = [];
+        agrupado[f.fecha].push(f);
+    });
+
     listaHistorial.innerHTML = Object.entries(agrupado).map(([fecha, arr]) => `
         <div class="item-fecha">
             <div class="titulo-fecha" onclick="alternarFecha(this)">
@@ -567,10 +583,40 @@ function procesarFacturas(facturas){
             <div class="contenido-fechas">
                 <table class="tabla-resumen">
                     <tr><th>Hora</th><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
-                    ${arr.map(f => `<tr><td>${f.hora}</td><td>$${f.total_general.toFixed(2)}</td><td><button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"cliente")'>Ver</button></td><td><button class="btn-detallada" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td></tr>`).join('')}
+                    ${arr.map(f => `
+                    <tr>
+                        <td>${f.hora || 'Sin hora'}</td>
+                        <td>$${Number(f.total_general || 0).toFixed(2)}</td>
+                        <td><button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"cliente")'>Ver</button></td>
+                        <td><button class="btn-detallada" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td>
+                    </tr>`).join('')}
                 </table>
             </div>
         </div>`).join('');
+}
+
+function procesarFacturas(facturas){
+    totalesPorDia = {};
+    facturas.forEach(f => {
+        const fecha = f.fecha;
+        if(!fecha) return;
+        if(!totalesPorDia[fecha]) totalesPorDia[fecha] = {};
+        if(!f.detalles || !Array.isArray(f.detalles)) return;
+        
+        f.detalles.forEach(item => {
+            if(!item.nombre) return;
+            if(!totalesPorDia[fecha][item.nombre]){
+                totalesPorDia[fecha][item.nombre] = {cantidadTotal:0, unidad:item.unidad||'Libra', montoTotal:0};
+            }
+            totalesPorDia[fecha][item.nombre].cantidadTotal += Number(item.cantidad || 0);
+            totalesPorDia[fecha][item.nombre].montoTotal += Number(item.total || 0);
+        });
+    });
+    
+    totalesLocalesGuardados = {...totalesPorDia};
+    localStorage.setItem('totalesLocales', JSON.stringify(totalesLocalesGuardados));
+    actualizarVistaTotalesPorDia();
+    actualizarVistaHistorial(facturas);
 }
 
 function alternarFecha(el){
@@ -582,12 +628,17 @@ function alternarFecha(el){
 function cambiarVistaTotales(m){ vistaAgrupada = m; actualizarVistaTotalesPorDia(); }
 function buscarPorFecha(){
     const busqueda = document.getElementById('fechaBusqueda').value.trim();
-    if(!busqueda) return actualizarVistaTotalesPorDia();
-    const filtrados = {};
-    Object.entries(totalesPorDia).forEach(([fecha, datos]) => { if(fecha.includes(busqueda)) filtrados[fecha] = datos; });
-    const original = totalesPorDia; totalesPorDia = filtrados; actualizarVistaTotalesPorDia(); totalesPorDia = original;
+    if(!busqueda) return cargarHistorialYTotales();
+    
+    const filtradas = [];
+    const todas = [...facturasLocales];
+    todas.forEach(f => { if(f.fecha && f.fecha.includes(busqueda)) filtradas.push(f); });
+    actualizarVistaHistorial(filtradas);
 }
-function verTodosLosDias(){ document.getElementById('fechaBusqueda').value = ''; actualizarVistaTotalesPorDia(); }
+function verTodosLosDias(){
+    document.getElementById('fechaBusqueda').value = '';
+    cargarHistorialYTotales();
+}
 
 function verFacturaGuardada(f,t){
     facturaActual = f;
@@ -595,65 +646,6 @@ function verFacturaGuardada(f,t){
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
     document.getElementById('btnVerCliente').style.display = 'inline-block';
     document.getElementById("ventanaFactura").style.display = "flex";
-}
-
-function actualizarVistaTotalesPorDia(){
-    const lista = document.getElementById('listaTotalesPorDia');
-    const fechas = Object.keys(totalesPorDia).sort().reverse();
-    if(fechas.length === 0){
-        lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>`;
-        return;
-    }
-    let html = `
-    <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-        <button style="flex:1; min-width:120px; padding:8px;" onclick="cambiarVistaTotales(false)">📅 Ver por Días</button>
-        <button style="flex:1; min-width:120px; padding:8px;" onclick="cambiarVistaTotales(true)">📊 Ver Total Acumulado</button>
-    </div>`;
-
-    if(!vistaAgrupada){
-        let totalG = 0;
-        fechas.forEach(fecha => {
-            const mats = Object.entries(totalesPorDia[fecha]);
-            const totalD = Object.values(totalesPorDia[fecha]).reduce((s,d)=>s+d.montoTotal,0);
-            totalG += totalD;
-            html += `
-            <div class="item-fecha">
-                <div class="titulo-fecha" onclick="alternarFecha(this)">
-                    <span>📅 Día: ${fecha}</span><span class="flecha">▼</span>
-                </div>
-                <div class="contenido-fechas">
-                    <table class="tabla-resumen">
-                        <tr><th>Material</th><th>Peso Total</th><th>Monto Total</th><th>Acción</th></tr>
-                        ${mats.map(([n,d])=>`<tr><td>${n}</td><td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td><td>$${d.montoTotal.toFixed(2)}</td><td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterialPorDia('${fecha}','${n}')">🔄 Eliminar</button></td></tr>`).join('')}
-                        <tr class="fila-total-dia"><td colspan="3">💵 Total del día</td><td>$${totalD.toFixed(2)}</td></tr>
-                    </table>
-                </div>
-            </div>`;
-        });
-        html += `<table class="tabla-resumen"><tr class="fila-total-general"><td colspan="4" style="text-align:center;">💰 TOTAL GENERAL: $${totalG.toFixed(2)}</td></tr></table>`;
-    } else {
-        const acu = {}; let totalG =0;
-        fechas.forEach(f => {
-            Object.entries(totalesPorDia[f]).forEach(([n,d])=>{
-                if(!acu[n]) acu[n] = {cantidad:0, unidad:d.unidad, monto:0};
-                acu[n].cantidad += d.cantidadTotal; acu[n].monto += d.montoTotal; totalG += d.montoTotal;
-            });
-        });
-        html += `
-        <div class="item-fecha" style="border-color:#42a5f5;">
-            <div class="titulo-fecha" style="background:#e3f2fd; color:#0d47a1;">
-                <span>📊 TOTALES ACUMULADOS</span>
-            </div>
-            <div class="contenido-fechas abierto">
-                <table class="tabla-resumen">
-                    <tr><th>Material</th><th>Peso Total Sumado</th><th>Monto Total Sumado</th><th>Acción</th></tr>
-                    ${Object.entries(acu).map(([n,d])=>`<tr><td>${n}</td><td>${d.cantidad.toFixed(1)} ${d.unidad}</td><td>$${d.monto.toFixed(2)}</td><td><button class="btn-reiniciar-individual" onclick="reiniciarMaterialNuevoPeriodo('${n}')">🔄 Empezar de Cero</button></td></tr>`).join('')}
-                    <tr class="fila-total-general"><td colspan="4" style="text-align:center;">💰 TOTAL GENERAL: $${totalG.toFixed(2)}</td></tr>
-                </table>
-            </div>
-        </div>`;
-    }
-    lista.innerHTML = html;
 }
 </script>
 </body>
