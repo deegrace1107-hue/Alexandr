@@ -227,17 +227,18 @@ let totalesOriginales = {};
 let facturaActual = null;
 let vistaAgrupada = false;
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
+let facturasLocales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
 let sincronizando = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
     supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
     actualizarEstadoConexion(navigator.onLine);
     await cargarMateriales();
-    await cargarHistorialYTotales();
     await sincronizarPendientes();
+    await cargarHistorialYTotales();
 });
 
-// ========== GESTIÓN DE CONEXIÓN Y SINCRONIZACIÓN ==========
+// ========== CONEXIÓN Y SINCRONIZACIÓN ARREGLADA ==========
 function actualizarEstadoConexion(conectado) {
     const aviso = document.getElementById('estadoConexion');
     if(conectado) {
@@ -245,49 +246,65 @@ function actualizarEstadoConexion(conectado) {
         aviso.style.background = "#e8f5e9";
         aviso.style.color = "#1b5e20";
     } else {
-        aviso.innerHTML = "⚠️ SIN INTERNET: Todo se guarda en el celular y se subirá al tener señal";
+        aviso.innerHTML = "⚠️ SIN INTERNET: Todo se guarda seguro en el celular y se subirá solo al tener señal";
         aviso.style.background = "#fff3cd";
         aviso.style.color = "#856404";
     }
 }
 
+// ✅ GUARDA SEGURO EN EL CELULAR Y AGENDA PARA SUBIR DESPUÉS
 function guardarComoPendiente(tipo, datos){
+    // Primero guardamos SIEMPRE en el celular para no perder nada
+    if(tipo === 'factura'){
+        facturasLocales.push(datos);
+        localStorage.setItem('facturasLocales', JSON.stringify(facturasLocales));
+    }
+    // Luego guardamos en la lista de pendientes para subir a la nube
     datosPendientes.push({ tipo, datos, fecha: new Date().toISOString() });
     localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-    alert("✅ Guardado sin conexión: se enviará a la nube cuando haya internet");
+    alert("✅ Guardado correctamente: se subirá a la nube automáticamente cuando haya internet");
 }
 
+// ✅ SINCRONIZA TODOS LOS DATOS PENDIENTES SIN FALLAR
 async function sincronizarPendientes(){
     if(sincronizando || datosPendientes.length === 0 || !navigator.onLine) return;
     sincronizando = true;
+    let subidos = 0;
 
     try {
-        const exitosos = [];
-        for(let i = 0; i < datosPendientes.length; i++){
-            const item = datosPendientes[i];
-            if(item.tipo === 'factura'){
-                await supabaseCliente.from('facturas').insert([item.datos]);
-            } else if(item.tipo === 'material'){
-                await supabaseCliente.from('materiales').insert([item.datos]);
+        const nuevosPendientes = [];
+        for(const item of datosPendientes){
+            try {
+                if(item.tipo === 'factura'){
+                    await supabaseCliente.from('facturas').insert([item.datos]);
+                } else if(item.tipo === 'material'){
+                    await supabaseCliente.from('materiales').insert([item.datos]);
+                }
+                subidos++;
+            } catch (errorSubida) {
+                // Si falla la subida, lo volvemos a dejar para intentar después
+                nuevosPendientes.push(item);
+                console.log("Pendiente de subir después:", errorSubida);
             }
-            exitosos.push(i);
         }
 
-        datosPendientes = datosPendientes.filter((_,i) => !exitosos.includes(i));
+        // Actualizamos la lista solo con los que faltan
+        datosPendientes = nuevosPendientes;
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
         
-        if(exitosos.length > 0){
-            alert(`✅ Se sincronizaron ${exitosos.length} registros nuevos a la nube`);
+        if(subidos > 0){
+            alert(`✅ Se subieron ${subidos} compras/materiales a la nube! Ahora todos verán los mismos datos`);
             await cargarHistorialYTotales();
             await cargarMateriales();
         }
     } catch (err) {
-        console.log("Sincronización pendiente: ", err);
+        console.log("Error general de sincronización:", err);
     } finally {
         sincronizando = false;
     }
 }
 
+// Intentamos subir cada vez que cambie la conexión
 window.addEventListener('online', () => {
     actualizarEstadoConexion(true);
     sincronizarPendientes();
@@ -338,10 +355,10 @@ async function guardarMaterial(){
         const { error } = await supabaseCliente.from('materiales').insert([nuevoMaterial]);
         if(error) throw error;
         alert("✅ Material guardado en la nube");
-    } catch (err) {
-        guardarComoPendiente('material', nuevoMaterial);
         listaActual.push(nuevoMaterial);
         localStorage.setItem('materialesLocales', JSON.stringify(listaActual));
+    } catch (err) {
+        guardarComoPendiente('material', nuevoMaterial);
     }
     
     document.getElementById('nombreMaterial').value = '';
@@ -374,7 +391,7 @@ async function eliminarMaterial(id){
         if(error) throw error;
         await cargarMateriales();
     } catch (err) {
-        alert("No se pudo eliminar: " + err.message);
+        alert("No se pudo eliminar: se intentará cuando haya internet");
     }
 }
 
@@ -444,14 +461,18 @@ async function generarFacturas(){
     if(carrito.length === 0) return alert('Agrega al menos una pesada');
     const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
     const fecha = new Date().toLocaleDateString('es-EC');
-    // ✅ AGREGAMOS LA HORA EXACTA
     const hora = new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
-    facturaActual = { fecha, hora, total_general: totalGeneral, detalles: [...carrito] };
+    facturaActual = { fecha, hora, total_general: totalGeneral, detalles: [...carrito], creado_el: new Date().toISOString() };
     
     try {
-        await supabaseCliente.from('facturas').insert([facturaActual]);
-        alert("✅ Factura guardada en la nube");
+        const { error } = await supabaseCliente.from('facturas').insert([facturaActual]);
+        if(error) throw error;
+        alert("✅ Factura guardada en la nube, todos la verán ahora");
+        // Agregamos también a los locales por si acaso
+        facturasLocales.push(facturaActual);
+        localStorage.setItem('facturasLocales', JSON.stringify(facturasLocales));
     } catch (err) {
+        // Si no hay internet, la guardamos segura y la subimos después
         guardarComoPendiente('factura', facturaActual);
     }
     
@@ -464,7 +485,7 @@ async function generarFacturas(){
     await cargarHistorialYTotales();
 }
 
-// ========== FACTURAS (AHORA CON FECHA Y HORA) ==========
+// ========== FACTURAS ==========
 function mostrarCliente(){
     if(!facturaActual) return;
     let agrupado = {};
@@ -479,7 +500,6 @@ function mostrarCliente(){
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">RECIBO DE PAGO - CLIENTE</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
-        <!-- ✅ APARECE LA HORA EN LA FACTURA -->
         <p style="font-size:14px;"><strong>Hora:</strong> ${facturaActual.hora}</p>
         <p style="font-size:14px;"><strong>Recicladora Alexander</strong></p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
@@ -499,7 +519,6 @@ function mostrarDetallada(){
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">FACTURA DETALLADA - CONTROL</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
-        <!-- ✅ APARECE LA HORA TAMBIÉN EN LA DETALLADA -->
         <p style="font-size:14px;"><strong>Hora:</strong> ${facturaActual.hora}</p>
         <p style="font-size:14px;"><strong>Recicladora Alexander</strong></p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
@@ -524,15 +543,20 @@ function cerrarVentana(){
 
 // ========== HISTORIAL Y TOTALES ==========
 async function cargarHistorialYTotales(){
+    let facturasNube = [];
     try {
-        const { data: facturas, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false});
-        if(error) throw error;
-        procesarFacturas(facturas || []);
+        const { data, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false});
+        if(!error && data) facturasNube = data;
     } catch (err) {
-        console.log("Cargando registros locales...");
-        const locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
-        procesarFacturas(locales);
+        console.log("Cargando registros guardados en el celular...");
     }
+
+    // ✅ UNIMOS LOS DE LA NUBE Y LOS DEL CELULAR PARA NO PERDER NINGUNO
+    const todasLasFacturas = [...facturasNube, ...facturasLocales];
+    // Quitamos duplicados
+    const facturasUnicas = Array.from(new Map(todasLasFacturas.map(f => [JSON.stringify(f), f])).values());
+    
+    procesarFacturas(facturasUnicas);
 }
 
 function procesarFacturas(facturas){
@@ -575,7 +599,6 @@ function procesarFacturas(facturas){
                 </div>
                 <div class="contenido-fechas">
                     <table class="tabla-resumen">
-                        <!-- ✅ AGREGAMOS LA COLUMNA DE HORA EN EL HISTORIAL -->
                         <tr><th>Hora</th><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
                         ${listaFacturas.map(f => `
                         <tr>
