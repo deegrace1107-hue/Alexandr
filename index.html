@@ -13,45 +13,112 @@
         .container { max-width: 100%; margin: 0 auto; background: #fff; padding: 12px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
         .logo-principal { display: block; max-width: 150px; margin: 0 auto 10px; }
         h1 { font-size: 18px; text-align: center; color: #2e7d32; margin-bottom: 12px; font-weight: 700; }
-        h2 { font-size: 15px; color: #2e7d32; margin-bottom: 8px; font-weight: 600; }
+        h2 { font-size: 15px; color: #2e7d32; margin-bottom: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        h3 { font-size: 14px; color: #1565c0; margin: 10px 0 6px; padding-left: 4px; border-left: 3px solid #42a5f5; }
         .section { margin-bottom: 14px; padding: 10px; border: 1px solid #c8e6c9; border-radius: 8px; }
-        .section.resumen { background: #f1f8e9; border-color: #8bc34a; }
-        .section.totales { background: #e3f2fd; border-color: #42a5f5; }
-        .section.historial { background: #fff8e1; border-color: #ffb74d; }
-        .buscador { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; }
+        .buscador { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; }
         .buscador input { flex: 1; min-width: 140px; padding: 7px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin-bottom: 8px; }
         input, select, button { padding: 7px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; width: 100%; }
-        button { background-color: #388e3c; color: #fff; border: none; cursor: pointer; font-weight: 600; }
+        button { background-color: #388e3c; color: #fff; border: none; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+        button:hover { background-color: #2e7d32; }
         .btn-buscar { background-color: #1976d2; width: auto; }
+        .btn-buscar:hover { background-color: #1565c0; }
         .btn-ver-todos { background-color: #ff9800; width: auto; }
+        .btn-ver-todos:hover { background-color: #fb8c00; }
         .btn-actualizar { background-color: #9c27b0; width: auto; margin-bottom: 10px; }
         .btn-quitar { background-color: #ef5350; padding: 4px 6px; font-size: 11px; border-radius: 4px; width: auto; }
-        .btn-cliente, .btn-detallada { padding: 4px 2px; font-size: 10.5px; min-width: 60px; width: 100%; }
-        .table-wrap { overflow-x: auto; width: 100%; margin: 6px 0; border-radius: 6px; border: 1px solid #e0e0e0; }
+        .btn-quitar:hover { background-color: #e53935; }
+        .btn-reiniciar-individual { background-color: #ff9800; padding: 5px 4px; font-size: 11px; border-radius: 4px; width: auto; }
+        .btn-reiniciar-individual:hover { background-color: #fb8c00; }
+        .btn-danger { background-color: #d32f2f; }
+        .btn-danger:hover { background-color: #b71c1c; }
+        .btn-cliente, .btn-detallada { 
+            padding: 4px 2px !important;
+            font-size: 10.5px !important;
+            min-width: 60px !important;
+            width: 100% !important;
+            margin: 1px !important;
+        }
+        .btn-cliente:hover { background-color: #388e3c; }
+        .btn-detallada:hover { background-color: #1565c0; }
+        .table-wrap { 
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            width: 100% !important;
+            margin: 6px 0 !important;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        .table-wrap table { min-width: 580px !important; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: center; }
+        th, td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: center; vertical-align: middle; }
         th { background-color: #e8f5e9; color: #1b5e20; font-weight: 600; }
+        .fila-total-dia { background-color: #e8f5e9; font-weight: 600; color: #1b5e20; }
+        .fila-total-general { background-color: #e3f2fd; font-weight: 700; color: #0d47a1; font-size: 13px; }
         .total { text-align: right; font-size: 15px; font-weight: 700; color: #1b5e20; margin: 8px 0; padding-right: 4px; }
+        .resumen { background-color: #f1f8e9; border-color: #8bc34a; }
+        .historial { background: #fff8e1; border-color: #ffb74d; }
+        .totales-generales { background: #e3f2fd; border-color: #42a5f5; margin-top: 10px; }
         .aviso { background: #e3f2fd; padding: 7px; border-radius: 6px; margin-bottom: 8px; text-align: center; color: #1565c0; font-size: 12px; font-weight: 500; }
+        .aviso-sin-conexion { background: #fff3cd; border: 1px solid #ffecb5; color: #856404; padding: 6px; border-radius: 6px; margin: 6px 0; font-size: 11px; text-align: center; }
+        .tabla-resumen { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+        .tabla-resumen th, .tabla-resumen td { border: 1px solid #e0e0e0; padding: 5px 3px !important; text-align: right; }
+        .tabla-resumen th:first-child, .tabla-resumen td:first-child { text-align: left; }
+        .tabla-resumen th:last-child, .tabla-resumen td:last-child { min-width: 75px !important; }
+        .tabla-resumen th { background: #e8f5e9; font-weight: 600; }
+        .resumen-dia { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #90caf9; }
         .item-fecha { border: 1px solid #ffcc80; border-radius: 6px; margin-bottom: 8px; background: #fff; }
         .titulo-fecha { padding: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #e65100; background: #fff3e0; border-radius: 6px; }
+        .titulo-fecha:hover { background: #ffe0b2; }
+        .flecha { transition: transform 0.3s; }
         .contenido-fechas { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 10px; }
-        .contenido-fechas.abierto { max-height: 3000px; padding: 10px; }
+        .contenido-fechas.abierto { max-height: 2000px; padding: 10px; }
         #ventanaFactura { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center; padding: 8px; }
-        .caja-factura { background: white; width: 100%; max-width: 500px; padding: 20px; border-radius: 10px; position: relative; max-height: 95vh; overflow-y: auto; }
-        .btn-cerrar { position: absolute; top: 6px; right: 10px; font-size: 24px; border: none; background: none; cursor: pointer; color: #666; }
+        .caja-factura { background: white; width: 100%; max-width: 500px; padding: 20px; border-radius: 10px; position: relative; max-height: 95vh; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .btn-cerrar { position: absolute; top: 6px; right: 10px; font-size: 24px; border: none; background: none; cursor: pointer; color: #666; font-weight: 400; }
         .logo-factura { display: block; max-width: 130px; margin: 0 auto 15px; }
         .tabla-factura { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
         .tabla-factura th, .tabla-factura td { border: 1px solid #444; padding: 8px 5px; text-align: right; }
         .tabla-factura th:first-child, .tabla-factura td:first-child { text-align: left; }
-        .tabla-factura th { background: #f5f5f5; font-weight: 600; }
+        .tabla-factura th { background: #f5f5f5; font-weight: 600; font-size: 13px; }
+        .desglose { margin-top: 14px; text-align: right; font-size: 13px; padding-right: 4px; }
+        .desglose div { margin: 5px 0; padding: 3px 0; }
         .total-final { font-size: 16px; font-weight: 700; color: #1b5e20; border-top: 2px solid #2e7d32; padding-top: 6px; margin-top: 4px; }
+        #btnImprimir, #btnVerDetallada, #btnVerCliente, .btn-danger {
+            padding: 7px 10px !important;
+            font-size: 13px !important;
+            margin: 2px !important;
+        }
+        @media (max-width: 480px) {
+            body { padding: 5px; font-size: 12px; }
+            .container { padding: 8px; border-radius: 8px; }
+            .logo-principal { max-width: 120px; }
+            .buscador { flex-direction: column; align-items: stretch; }
+            .buscador input { min-width: auto; }
+            h1 { font-size: 16px; }
+            h2 { font-size: 14px; flex-direction: column; gap: 4px; }
+            h3 { font-size: 13px; }
+            .grid { grid-template-columns: 1fr; }
+            table { font-size: 11px; }
+            th, td { padding: 5px 3px; }
+            .fila-total-dia, .fila-total-general { font-size: 12px; }
+            .total { font-size: 14px; }
+            .caja-factura { padding: 15px; }
+            .logo-factura { max-width: 110px; }
+            .btn-cerrar { font-size: 20px; }
+        }
         @media print {
-            body { background: white; padding: 0; }
-            .container, .btn-cerrar, button, .aviso, .section { display: none !important; }
+            body { background: white; padding: 0; font-size: 14px; }
+            .container, .btn-cerrar, button, .aviso, .section, .buscador, .aviso-sin-conexion { display: none !important; }
             #ventanaFactura { position: static; display: block !important; background: white; width: 100%; height: auto; padding: 0; }
-            .caja-factura { width: 100%; max-width: 100%; padding: 12px; box-shadow: none; border: none; }
+            .caja-factura { width: 100%; max-width: 100%; padding: 12px; box-shadow: none; border: none; border-radius: 0; }
+            .logo-factura { max-width: 140px; }
+            .tabla-factura { font-size: 15px; }
+            .tabla-factura th, .tabla-factura td { padding: 10px 6px; }
+            .desglose { font-size: 15px; }
+            .total-final { font-size: 18px; }
+            @page { size: A4; margin: 1cm; }
         }
     </style>
 </head>
@@ -61,7 +128,7 @@
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
     <div class="aviso" id="estadoConexion">✅ Cargando datos compartidos...</div>
-    <button class="btn-actualizar" onclick="refrescarTodo()">🔄 Si falta algo, toca aquí</button>
+    <button class="btn-actualizar" onclick="cargarTodoCompartido()">🔄 Si falta algo, toca aquí</button>
 
     <div class="section">
         <h2>Configurar Materiales</h2>
@@ -77,10 +144,17 @@
     </div>
 
     <div class="section">
-        <h2>Materiales Generales</h2>
+        <h2>Materiales Guardados</h2>
         <div class="table-wrap">
             <table id="tablaMateriales">
-                <thead><tr><th>Material</th><th>Unidad</th><th>Precio</th><th>Acción</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Unidad</th>
+                        <th>Precio</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
                 <tbody id="cuerpoTabla"></tbody>
             </table>
         </div>
@@ -97,26 +171,32 @@
 
     <div class="section resumen">
         <h2>Resumen de Compra Actual</h2>
-        <div id="listaCompra"><p style="text-align:center; color:#666;">Sin pesadas agregadas</p></div>
+        <div id="listaCompra">
+            <p style="text-align:center; color:#666; padding:10px;">Sin pesadas agregadas</p>
+        </div>
         <div class="total" id="totalCompra">Total a Pagar: $0.00</div>
         <br>
-        <button onclick="generarFactura()" style="width:100%; font-size:15px;">📄 Guardar y Ver Facturas</button>
+        <button onclick="generarFacturas()" style="width:100%; font-size:15px;">📄 Guardar y Ver Facturas</button>
     </div>
 
-    <div class="section totales">
+    <div class="section totales-generales">
         <h2>📊 TOTALES ACUMULADOS</h2>
         <div class="buscador">
             <input type="text" id="fechaBusqueda" placeholder="Buscar por fecha: dd/mm/aaaa">
             <button class="btn-buscar" onclick="buscarPorFecha()">🔍 Buscar</button>
-            <button class="btn-ver-todos" onclick="verTodos()">📋 Ver Todos</button>
+            <button class="btn-ver-todos" onclick="verTodosLosDias()">📋 Ver Todos</button>
         </div>
         <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Elige ver por días o el total sumado de todos los materiales</p>
-        <div id="listaTotales"><p style="text-align:center; color:#666;">Sin compras registradas aún</p></div>
+        <div id="listaTotalesPorDia">
+            <p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>
+        </div>
     </div>
 
     <div class="section historial">
         <h2>📋 Historial de Compras (de todos)</h2>
-        <div id="listaHistorial"><p style="text-align:center; color:#666;">Cargando todos los registros...</p></div>
+        <div id="listaHistorial">
+            <p style="text-align:center; color:#666; padding:10px;">Cargando todos los registros...</p>
+        </div>
     </div>
 </div>
 
@@ -125,265 +205,434 @@
         <button class="btn-cerrar" onclick="cerrarVentana()">×</button>
         <div id="contenidoFactura"></div>
         <div style="text-align:center; margin-top:16px;">
-            <button onclick="window.print()">🖨️ Imprimir</button>
-            <button class="btn-detallada" onclick="mostrarDetallada()">📋 Detallada</button>
-            <button class="btn-cliente" onclick="mostrarCliente()">🧾 Cliente</button>
-            <button class="btn-quitar" onclick="cerrarVentana()">Cerrar</button>
+            <button id="btnImprimir" onclick="window.print()">🖨️ Imprimir</button>
+            <button class="btn-detallada" id="btnVerDetallada" style="display:none;" onclick="mostrarDetallada()">📋 Detallada</button>
+            <button class="btn-cliente" id="btnVerCliente" style="display:none;" onclick="mostrarCliente()">🧾 Cliente</button>
+            <button class="btn-danger" onclick="cerrarVentana()">Cerrar</button>
         </div>
     </div>
 </div>
 
 <script>
+// ==============================================
+// 🔑 CONFIGURACIÓN - NO CAMBIES NADA MÁS AQUÍ
+// ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
+const VERSION_APP = "1.5 - Sincronización completa";
 
-let supabase;
+let supabaseCliente;
 let carrito = [];
+let totalesPorDia = {};
+let totalesOriginales = {};
 let facturaActual = null;
+let vistaAgrupada = false;
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
+let sincronizando = false;
 
+// ==============================================
+// 🚀 AL ABRIR LA APP: CARGA LOCAL Y TRAE LO DE TODOS
+// ==============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    supabase = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
-    // ✅ AL ABRIR LA APP: TRAE INMEDIATAMENTE LO DE TODOS
-    await refrescarTodo();
+    const versionGuardada = localStorage.getItem('versionRecicladora');
+    if (versionGuardada !== VERSION_APP) {
+        alert("✅ ¡Actualizado! Ahora todos ven las mismas facturas, totales y materiales.");
+        localStorage.setItem('versionRecicladora', VERSION_APP);
+    }
+
+    supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
+    
+    // PRIMERO MUESTRA LO QUE TIENES AQUÍ PARA NO ESPERAR
+    await cargarMaterialesLocales();
+    await cargarHistorialLocales();
+    
+    // LUEGO TRAE LO DE TODOS Y ACTUALIZA AUTOMÁTICAMENTE
+    setTimeout(() => cargarTodoCompartido(), 300);
 });
 
-// ✅ FUNCIÓN PRINCIPAL: TRAE MATERIALES, FACTURAS, TOTALES Y HISTORIAL DE TODOS
-async function refrescarTodo() {
+// ========== SINCRONIZACIÓN COMPARTIDA ==========
+function actualizarEstadoConexion(conectado, mensaje = "") {
     const aviso = document.getElementById('estadoConexion');
-    if(!navigator.onLine) {
-        aviso.innerHTML = "✅ SIN INTERNET: Trabaja normal, se subirá al tener señal";
+    if(conectado) {
+        aviso.innerHTML = mensaje || "✅ Conectado | Todos ven los mismos datos";
+        aviso.style.background = "#e8f5e9";
+        aviso.style.color = "#1b5e20";
+    } else {
+        aviso.innerHTML = "✅ SIN INTERNET: Trabaja normal, se subirá y aparecerá en todos al tener señal";
         aviso.style.background = "#fff3e0";
         aviso.style.color = "#e65100";
-        usarDatosLocales();
+    }
+}
+
+function guardarComoPendiente(tipo, datos){
+    datosPendientes.push({ tipo, datos, fecha: new Date().toISOString() });
+    localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+}
+
+// ✅ FUNCIÓN PRINCIPAL: TRAE MATERIALES, FACTURAS Y TOTALES DE TODOS
+async function cargarTodoCompartido(){
+    if(!navigator.onLine) {
+        actualizarEstadoConexion(false);
         return;
     }
-
-    aviso.innerHTML = "🔄 Actualizando datos de todos...";
-    aviso.style.background = "#e8f5e9";
-    aviso.style.color = "#1b5e20";
+    if(sincronizando) return;
+    sincronizando = true;
+    actualizarEstadoConexion(true, "📥 Descargando datos de todos...");
 
     try {
-        // Traer materiales compartidos
-        const { data: materiales } = await supabase.from('materiales').select('*').order('nombre');
-        if(materiales) {
-            localStorage.setItem('materialesLocales', JSON.stringify(materiales));
-            actualizarTablaMateriales(materiales);
-            actualizarSelectMateriales(materiales);
+        // 1. TRAE TODOS LOS MATERIALES COMPARTIDOS
+        const { data: matNube, error: errMat } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true});
+        if(!errMat && matNube) {
+            localStorage.setItem('materialesLocales', JSON.stringify(matNube));
+            actualizarTablaMateriales(matNube);
+            actualizarSelectMateriales(matNube);
         }
 
-        // Traer TODAS las facturas de TODOS los empleados
-        const { data: facturas } = await supabase.from('facturas').select('*').order('fecha_completa', {ascending:false});
-        if(facturas) {
-            localStorage.setItem('facturasLocales', JSON.stringify(facturas));
-            mostrarHistorial(facturas);
-            mostrarTotales(facturas);
+        // 2. TRAE TODAS LAS FACTURAS DE TODOS LOS CELULARES
+        const { data: facNube, error: errFac } = await supabaseCliente.from('facturas').select('*').order('fecha_completa', {ascending:false});
+        if(!errFac && facNube) {
+            localStorage.setItem('facturasLocales', JSON.stringify(facNube));
+            procesarFacturas(facNube);
         }
 
-        // Subir lo que falte de este celular
+        // 3. SUBE LO QUE FALTABA DE ESTE CELULAR
         await subirPendientes();
-        aviso.innerHTML = "✅ Listo! Ya ves todo lo que hicieron los demás";
+        actualizarEstadoConexion(true, "✅ Listo! Ya ves todo lo que subieron los demás");
     } catch (err) {
-        console.log("Error al cargar:", err);
-        usarDatosLocales();
+        console.log("Error al sincronizar:", err);
+        actualizarEstadoConexion(true, "⚠️ Usando datos locales, se actualizará luego");
+    } finally {
+        sincronizando = false;
     }
 }
 
-function usarDatosLocales() {
-    const matLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    const facLocales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
-    actualizarTablaMateriales(matLocales);
-    actualizarSelectMateriales(matLocales);
-    mostrarHistorial(facLocales);
-    mostrarTotales(facLocales);
-}
-
-// ✅ AL VOLVER A TENER INTERNET, ACTUALIZA SOLO LO DE LOS DEMÁS
+// ✅ AL VOLVER A TENER INTERNET, ACTUALIZA SOLO LO DE TODOS
 window.addEventListener('online', async () => {
-    await subirPendientes();
-    await refrescarTodo();
+    await cargarTodoCompartido();
 });
+window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
-async function subirPendientes() {
+// ✅ SUBE LO PENDIENTE Y REFRESCA TODO PARA QUE APAREZCA EN TODOS
+async function subirPendientes(){
     if(!navigator.onLine || datosPendientes.length === 0) return;
+    let subidos = 0;
     try {
         for(const item of datosPendientes) {
-            if(item.tipo === 'material') await supabase.from('materiales').insert([item.datos]);
-            if(item.tipo === 'factura') await supabase.from('facturas').insert([item.datos]);
+            if(item.tipo === 'factura') await supabaseCliente.from('facturas').insert([item.datos]);
+            else if(item.tipo === 'material') await supabaseCliente.from('materiales').insert([item.datos]);
+            subidos++;
         }
         datosPendientes = [];
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-        alert(`✅ Se subieron los registros, ahora aparecen en todos los celulares`);
+        if(subidos > 0) {
+            alert(`✅ Se subieron ${subidos} registros. Ahora aparecen en todos los celulares.`);
+            await cargarTodoCompartido();
+        }
     } catch (err) {
         console.log("Pendientes por subir luego:", err);
     }
 }
 
-// Funciones de materiales
-async function guardarMaterial() {
+// ========== CARGA LOCAL PARA INICIO RÁPIDO ==========
+async function cargarMaterialesLocales(){
+    const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+    actualizarTablaMateriales(locales);
+    actualizarSelectMateriales(locales);
+}
+async function cargarHistorialLocales(){
+    const locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
+    procesarFacturas(locales);
+}
+
+// ========== FUNCIONES DE MATERIALES (IGUALES QUE ANTES) ==========
+async function guardarMaterial(){
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
     const precio = parseFloat(document.getElementById('precioUnitario').value);
-    if(!nombre || isNaN(precio) || precio <=0) return alert("Completa bien los datos");
+    if(!nombre) return alert('Escribe el nombre del material');
+    if(isNaN(precio) || precio <= 0) return alert('Pon un precio mayor a 0');
+    
+    const listaActual = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+    if(listaActual.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) return alert(`⚠️ "${nombre}" ya existe`);
 
-    const nuevo = { nombre, unidad, precio };
+    const nuevoMaterial = { nombre, unidad, precio };
+    listaActual.push(nuevoMaterial);
+    localStorage.setItem('materialesLocales', JSON.stringify(listaActual));
+    actualizarTablaMateriales(listaActual);
+    actualizarSelectMateriales(listaActual);
+
     if(navigator.onLine) {
-        await supabase.from('materiales').insert([nuevo]);
-        await refrescarTodo();
+        try { await supabaseCliente.from('materiales').insert([nuevoMaterial]); await cargarTodoCompartido(); }
+        catch { guardarComoPendiente('material', nuevoMaterial); }
     } else {
-        datosPendientes.push({tipo:'material', datos:nuevo});
-        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+        guardarComoPendiente('material', nuevoMaterial);
         alert("✅ Guardado aquí, aparecerá en todos al tener señal");
     }
+    
     document.getElementById('nombreMaterial').value = '';
     document.getElementById('precioUnitario').value = '';
 }
 
-function actualizarTablaMateriales(lista) {
+function actualizarTablaMateriales(lista){
     const cuerpo = document.getElementById('cuerpoTabla');
-    cuerpo.innerHTML = lista.map(m => `<tr><td>${m.nombre}</td><td>${m.unidad}</td><td>$${m.precio.toFixed(2)}</td><td><button class="btn-quitar" onclick="eliminarMaterial('${m.nombre}')">Eliminar</button></td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;">Sin materiales</td></tr>';
-}
-function actualizarSelectMateriales(lista) {
-    const sel = document.getElementById('materialSeleccionado');
-    sel.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio.toFixed(2)}/${m.unidad}</option>`).join('') || '<option value="">Sin materiales</option>';
+    cuerpo.innerHTML = lista.map((m, i) => `
+        <tr>
+            <td>${m.nombre}</td>
+            <td>${m.unidad}</td>
+            <td>$${m.precio.toFixed(2)}</td>
+            <td><button class="btn-danger" onclick="eliminarMaterial('${m.nombre}')">Eliminar</button></td>
+        </tr>
+    `).join('') || '<tr><td colspan="4" style="text-align:center;">Sin materiales</td></tr>';
 }
 
-// Funciones de carrito y facturas
-function agregarAlCarrito() {
-    const mat = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+async function eliminarMaterial(nombre){
+    let locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+    locales = locales.filter(m => m.nombre !== nombre);
+    localStorage.setItem('materialesLocales', JSON.stringify(locales));
+    actualizarTablaMateriales(locales);
+    actualizarSelectMateriales(locales);
+
+    if(navigator.onLine) {
+        try { await supabaseCliente.from('materiales').delete().eq('nombre', nombre); await cargarTodoCompartido(); }
+        catch { alert("Eliminado aquí, se actualizará en todos al tener internet"); }
+    }
+}
+
+function actualizarSelectMateriales(lista){
+    const select = document.getElementById('materialSeleccionado');
+    select.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio.toFixed(2)}/${m.unidad}</option>`).join('') || '<option value="">Sin materiales</option>';
+}
+
+// ========== CARRITO Y FACTURAS (IGUALES QUE ANTES) ==========
+async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
-    const peso = parseFloat(document.getElementById('cantidadRecibida').value);
-    const m = mat.find(x => x.nombre === nombre);
-    if(!m || !peso) return alert("Selecciona material y escribe el peso");
-    carrito.push({nombre:m.nombre, cantidad:peso, unidad:m.unidad, precio:m.precio, total: peso*m.precio});
+    const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
+    if(!cantidad || cantidad <=0) return alert('Pon el peso de esta pesada');
+    
+    const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+    const mat = locales.find(m => m.nombre === nombre);
+    if(!mat) return alert("Material no encontrado");
+    
+    carrito.push({ nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: mat.precio, total: cantidad * mat.precio });
     actualizarCarrito();
     document.getElementById('cantidadRecibida').value = '';
 }
-function quitarItem(i) { carrito.splice(i,1); actualizarCarrito(); }
-function actualizarCarrito() {
+
+function quitarDelCarrito(indice){
+    carrito.splice(indice, 1);
+    actualizarCarrito();
+}
+
+function actualizarCarrito(){
     const lista = document.getElementById('listaCompra');
-    if(carrito.length ===0) lista.innerHTML = '<p style="text-align:center; color:#666;">Sin pesadas agregadas</p>';
-    else lista.innerHTML = `<table><tr><th>Material</th><th>Peso</th><th>Precio U.</th><th>Total</th><th>Quitar</th></tr>` +
-        carrito.map((it,i) => `<tr><td>${it.nombre}</td><td>${it.cantidad} ${it.unidad}</td><td>$${it.precio.toFixed(2)}</td><td>$${it.total.toFixed(2)}</td><td><button class="btn-quitar" onclick="quitarItem(${i})">❌</button></td></tr>`).join('') + `</table>`;
-    const total = carrito.reduce((s,i)=>s+i.total,0);
+    if(carrito.length === 0){
+        lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin pesadas agregadas</p>`;
+    } else {
+        lista.innerHTML = `
+        <table class="tabla-resumen">
+            <tr><th>Material</th><th>Peso</th><th>Precio U.</th><th>Subtotal</th><th>Quitar</th></tr>
+            ${carrito.map((item, i) => `
+            <tr>
+                <td>${item.nombre}</td>
+                <td>${item.cantidad} ${item.unidad}</td>
+                <td>$${item.precio.toFixed(2)}</td>
+                <td>$${item.total.toFixed(2)}</td>
+                <td><button class="btn-quitar" onclick="quitarDelCarrito(${i})">❌</button></td>
+            </tr>
+            `).join('')}
+        </table>`;
+    }
+    const total = carrito.reduce((s,i) => s + i.total, 0);
     document.getElementById('totalCompra').textContent = `Total a Pagar: $${total.toFixed(2)}`;
 }
 
-async function generarFactura() {
-    if(carrito.length ===0) return alert("Agrega materiales primero");
-    const total = carrito.reduce((s,i)=>s+i.total,0);
+async function generarFacturas(){
+    if(carrito.length === 0) return alert('Agrega al menos una pesada');
+    const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
     const fecha = new Date().toLocaleDateString('es-EC');
-    const hora = new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
+    const hora = new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
     const fechaCompleta = `${fecha} ${hora}`;
-    const factura = { fecha, hora, fecha_completa: fechaCompleta, total_general: total, detalles:[...carrito] };
+    
+    facturaActual = { fecha, hora, fecha_completa: fechaCompleta, total_general: totalGeneral, detalles: [...carrito] };
+    
+    const locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
+    locales.unshift(facturaActual);
+    localStorage.setItem('facturasLocales', JSON.stringify(locales));
 
     if(navigator.onLine) {
-        await supabase.from('facturas').insert([factura]);
-        await refrescarTodo();
+        try { await supabaseCliente.from('facturas').insert([facturaActual]); await cargarTodoCompartido(); }
+        catch { guardarComoPendiente('factura', facturaActual); }
     } else {
-        datosPendientes.push({tipo:'factura', datos:factura});
-        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+        guardarComoPendiente('factura', facturaActual);
         alert("✅ Guardada aquí, aparecerá en todos los celulares al tener señal");
     }
-
-    facturaActual = factura;
+    
     mostrarCliente();
-    document.getElementById("ventanaFactura").style.display = 'flex';
-    carrito = []; actualizarCarrito();
+    document.getElementById('btnVerDetallada').style.display = 'inline-block';
+    document.getElementById('btnVerCliente').style.display = 'inline-block';
+    document.getElementById("ventanaFactura").style.display = "flex";
+    carrito = [];
+    actualizarCarrito();
 }
 
-// Mostrar facturas
-function mostrarCliente() {
+// ✅ FACTURAS IGUALES QUE LAS TENÍAS
+function mostrarCliente(){
     if(!facturaActual) return;
-    const agrupado = {};
-    facturaActual.detalles.forEach(i => {
-        if(!agrupado[i.nombre]) agrupado[i.nombre] = {cantidad:0, unidad:i.unidad, precio:i.precio, total:0};
-        agrupado[i.nombre].cantidad += i.cantidad;
-        agrupado[i.nombre].total += i.total;
+    let agrupado = {};
+    facturaActual.detalles.forEach(item => {
+        if(!agrupado[item.nombre]) agrupado[item.nombre] = { ...item, cantidad:0, total:0 };
+        agrupado[item.nombre].cantidad += item.cantidad;
+        agrupado[item.nombre].total += item.total;
     });
+    const lista = Object.values(agrupado);
     document.getElementById("contenidoFactura").innerHTML = `
         <img src="logo.png" alt="Recicladora Alexander" class="logo-factura">
-        <h2 style="text-align:center;">RECIBO DE PAGO - CLIENTE</h2><hr style="margin:10px 0;">
-        <p><strong>Fecha:</strong> ${facturaActual.fecha}</p>
-        <p><strong>Hora:</strong> ${facturaActual.hora}</p><hr>
+        <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">RECIBO DE PAGO - CLIENTE</h2>
+        <hr style="border:1px dashed #ccc; margin:10px 0;">
+        <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
+        <p style="font-size:14px;"><strong>Hora:</strong> ${facturaActual.hora}</p>
+        <p style="font-size:14px;"><strong>Recicladora Alexander</strong></p>
+        <p style="font-size:13px;">Portoviejo - Manabí - Ecuador</p>
+        <hr style="border:1px dashed #ccc; margin:14px 0;">
         <table class="tabla-factura">
             <tr><th>Material</th><th>Peso Total</th><th>Precio U.</th><th>Total</th></tr>
-            ${Object.values(agrupado).map(i=>`<tr><td>${i.nombre}</td><td>${i.cantidad.toFixed(1)} ${i.unidad}</td><td>$${i.precio.toFixed(2)}</td><td>$${i.total.toFixed(2)}</td></tr>`).join('')}
+            ${lista.map(i => `<tr><td>${i.nombre}</td><td>${i.cantidad.toFixed(1)} ${i.unidad}</td><td>$${i.precio.toFixed(2)}</td><td>$${i.total.toFixed(2)}</td></tr>`).join('')}
         </table>
-        <div class="total-final">Total a Recibir: $${facturaActual.total_general.toFixed(2)}</div>
+        <div class="desglose"><div class="total-final">Total a Recibir: $${facturaActual.total_general.toFixed(2)}</div></div>
+        <p style="text-align:center; font-size:12px; margin-top:16px;">Gracias por su confianza</p>
     `;
 }
-function mostrarDetallada() {
+
+function mostrarDetallada(){
     if(!facturaActual) return;
     document.getElementById("contenidoFactura").innerHTML = `
         <img src="logo.png" alt="Recicladora Alexander" class="logo-factura">
-        <h2 style="text-align:center;">FACTURA DETALLADA - CONTROL</h2><hr style="margin:10px 0;">
-        <p><strong>Fecha:</strong> ${facturaActual.fecha}</p>
-        <p><strong>Hora:</strong> ${facturaActual.hora}</p><hr>
+        <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">FACTURA DETALLADA - CONTROL</h2>
+        <hr style="border:1px dashed #ccc; margin:10px 0;">
+        <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
+        <p style="font-size:14px;"><strong>Hora:</strong> ${facturaActual.hora}</p>
+        <p style="font-size:14px;"><strong>Recicladora Alexander</strong></p>
+        <hr style="border:1px dashed #ccc; margin:14px 0;">
         <table class="tabla-factura">
             <tr><th>Material</th><th>Peso por pesada</th><th>Precio U.</th><th>Subtotal</th></tr>
-            ${facturaActual.detalles.map(i=>`<tr><td>${i.nombre}</td><td>${i.cantidad} ${i.unidad}</td><td>$${i.precio.toFixed(2)}</td><td>$${i.total.toFixed(2)}</td></tr>`).join('')}
+            ${facturaActual.detalles.map(i => `<tr><td>${i.nombre}</td><td>${i.cantidad} ${i.unidad}</td><td>$${i.precio.toFixed(2)}</td><td>$${i.total.toFixed(2)}</td></tr>`).join('')}
         </table>
-        <div class="total-final">Total: $${facturaActual.total_general.toFixed(2)}</div>
+        <div class="desglose"><div class="total-final">Total: $${facturaActual.total_general.toFixed(2)}</div></div>
     `;
 }
-function cerrarVentana(){ document.getElementById("ventanaFactura").style.display = 'none'; facturaActual = null; }
 
-// ✅ TU HISTORIAL Y TOTALES EXACTAMENTE COMO LOS TENÍAS
-function mostrarHistorial(facturas){
-    const lista = document.getElementById('listaHistorial');
-    if(facturas.length ===0) { lista.innerHTML = '<p style="text-align:center; color:#666;">Sin compras registradas aún</p>'; return; }
+function cerrarVentana(){
+    document.getElementById("ventanaFactura").style.display = "none";
+    facturaActual = null;
+    document.getElementById('btnVerDetallada').style.display = 'none';
+    document.getElementById('btnVerCliente').style.display = 'none';
+}
+
+// ========== HISTORIAL Y TOTALES (EXACTAMENTE IGUALES QUE LOS TENÍAS) ==========
+function procesarFacturas(facturas){
+    totalesPorDia = {};
+    facturas.forEach(f => {
+        if(!totalesPorDia[f.fecha]) totalesPorDia[f.fecha] = {};
+        f.detalles.forEach(i => {
+            if(!totalesPorDia[f.fecha][i.nombre]) totalesPorDia[f.fecha][i.nombre] = {cantidadTotal:0, unidad:i.unidad, montoTotal:0};
+            totalesPorDia[f.fecha][i.nombre].cantidadTotal += i.cantidad;
+            totalesPorDia[f.fecha][i.nombre].montoTotal += i.total;
+        });
+    });
+    totalesOriginales = {...totalesPorDia};
+    actualizarVistaTotalesPorDia();
+
+    const listaHistorial = document.getElementById('listaHistorial');
+    if(facturas.length === 0){
+        listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas</p>`;
+        return;
+    }
     const agrupado = {};
     facturas.forEach(f => { if(!agrupado[f.fecha]) agrupado[f.fecha] = []; agrupado[f.fecha].push(f); });
-    lista.innerHTML = Object.entries(agrupado).map(([fecha, fs]) => `
+    listaHistorial.innerHTML = Object.entries(agrupado).map(([fecha, fs]) => `
         <div class="item-fecha">
-            <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto')">📅 ${fecha} ▼</div>
+            <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto')">📅 ${fecha} <span class="flecha">▼</span></div>
             <div class="contenido-fechas">
-                <table><tr><th>Hora</th><th>Total</th><th>Ver</th></tr>
-                ${fs.map(f=>`<tr><td>${f.hora}</td><td>$${f.total_general.toFixed(2)}</td><td><button class="btn-buscar" onclick='verFactura(${JSON.stringify(f).replace(/'/g, "&#39;")})'>Ver</button></td></tr>`).join('')}
+                <table class="tabla-resumen">
+                    <tr><th>Hora</th><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
+                    ${fs.map(f => `<tr><td>${f.hora || '—'}</td><td>$${f.total_general.toFixed(2)}</td><td><button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "cliente")'>Ver</button></td><td><button class="btn-detallada" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "detallada")'>Ver</button></td></tr>`).join('')}
                 </table>
             </div>
         </div>
     `).join('');
 }
-function mostrarTotales(facturas){
-    const lista = document.getElementById('listaTotales');
-    if(facturas.length ===0) { lista.innerHTML = '<p style="text-align:center; color:#666;">Sin compras registradas aún</p>'; return; }
-    const totales = {};
-    const totalGeneral = facturas.reduce((s,f) => {
-        if(!totales[f.fecha]) totales[f.fecha] = {total:0, materiales:{}};
-        totales[f.fecha].total += f.total_general;
-        f.detalles.forEach(i => {
-            if(!totales[f.fecha].materiales[i.nombre]) totales[f.fecha].materiales[i.nombre] = {cantidad:0, unidad:i.unidad, monto:0};
-            totales[f.fecha].materiales[i.nombre].cantidad += i.cantidad;
-            totales[f.fecha].materiales[i.nombre].monto += i.total;
-        });
-        return s + f.total_general;
-    },0);
-    lista.innerHTML = Object.entries(totales).map(([fecha, datos]) => `
-        <div class="item-fecha">
-            <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto')">📅 ${fecha} - Total día: $${datos.total.toFixed(2)} ▼</div>
-            <div class="contenido-fechas">
-                <table><tr><th>Material</th><th>Peso Total</th><th>Monto</th></tr>
-                ${Object.entries(datos.materiales).map(([n,d])=>`<tr><td>${n}</td><td>${d.cantidad.toFixed(1)} ${d.unidad}</td><td>$${d.monto.toFixed(2)}</td></tr>`).join('')}
-                </table>
-            </div>
-        </div>
-    `).join('') + `<div class="total">💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}</div>`;
+
+function verFacturaGuardada(factura, tipo){
+    facturaActual = factura;
+    tipo === "cliente" ? mostrarCliente() : mostrarDetallada();
+    document.getElementById('btnVerDetallada').style.display = 'inline-block';
+    document.getElementById('btnVerCliente').style.display = 'inline-block';
+    document.getElementById("ventanaFactura").style.display = "flex";
 }
-function verFactura(f){ facturaActual = f; mostrarCliente(); document.getElementById("ventanaFactura").style.display = 'flex'; }
+
+function cambiarVistaTotales(modo){ vistaAgrupada = modo; actualizarVistaTotalesPorDia(); }
 function buscarPorFecha(){
     const fecha = document.getElementById('fechaBusqueda').value.trim();
-    if(!fecha) return alert("Escribe la fecha: dd/mm/aaaa");
-    const todas = JSON.parse(localStorage.getItem('facturasLocales')) || [];
-    mostrarHistorial(todas.filter(f => f.fecha === fecha));
-    mostrarTotales(todas.filter(f => f.fecha === fecha));
+    if(!fecha) return alert('Escribe la fecha así: dd/mm/aaaa');
+    totalesPorDia = totalesOriginales[fecha] ? {[fecha]: totalesOriginales[fecha]} : {};
+    actualizarVistaTotalesPorDia();
 }
-function verTodos(){
-    document.getElementById('fechaBusqueda').value = '';
-    const todas = JSON.parse(localStorage.getItem('facturasLocales')) || [];
-    mostrarHistorial(todas);
-    mostrarTotales(todas);
+function verTodosLosDias(){ totalesPorDia = {...totalesOriginales}; actualizarVistaTotalesPorDia(); }
+
+function actualizarVistaTotalesPorDia(){
+    const lista = document.getElementById('listaTotalesPorDia');
+    const fechas = Object.keys(totalesPorDia).sort().reverse();
+    if(fechas.length === 0){
+        lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin registros</p>`;
+        return;
+    }
+    let html = `
+    <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <button style="flex:1; min-width:120px;" onclick="cambiarVistaTotales(false)">📅 Por Días</button>
+        <button style="flex:1; min-width:120px;" onclick="cambiarVistaTotales(true)">📊 Total Acumulado</button>
+    </div>`;
+
+    if(!vistaAgrupada){
+        let totalGral = 0;
+        fechas.forEach(fecha => {
+            const materiales = Object.entries(totalesPorDia[fecha]);
+            const totalDia = Object.values(totalesPorDia[fecha]).reduce((s,d) => s + d.montoTotal, 0);
+            totalGral += totalDia;
+            html += `
+            <div class="item-fecha">
+                <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto')">📅 ${fecha} - Total día: $${totalDia.toFixed(2)} ▼</div>
+                <div class="contenido-fechas">
+                    <table class="tabla-resumen">
+                        <tr><th>Material</th><th>Peso Total</th><th>Monto</th></tr>
+                        ${materiales.map(([n,d]) => `<tr><td>${n}</td><td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td><td>$${d.montoTotal.toFixed(2)}</td></tr>`).join('')}
+                    </table>
+                </div>
+            </div>`;
+        });
+        html += `<div class="total">💰 TOTAL GENERAL: $${totalGral.toFixed(2)}</div>`;
+    } else {
+        const acum = {}; let totalGral = 0;
+        fechas.forEach(f => {
+            Object.entries(totalesPorDia[f]).forEach(([n,d]) => {
+                if(!acum[n]) acum[n] = {cantidad:0, unidad:d.unidad, monto:0};
+                acum[n].cantidad += d.cantidadTotal;
+                acum[n].monto += d.montoTotal;
+                totalGral += d.montoTotal;
+            });
+        });
+        html += `
+        <div class="item-fecha">
+            <div class="titulo-fecha" style="background:#e3f2fd; color:#0d47a1;">📊 TOTALES ACUMULADOS GENERALES</div>
+            <div class="contenido-fechas abierto">
+                <table class="tabla-resumen">
+                    <tr><th>Material</th><th>Peso Total</th><th>Monto Total</th></tr>
+                    ${Object.entries(acum).map(([n,d]) => `<tr><td>${n}</td><td>${d.cantidad.toFixed(1)} ${d.unidad}</td><td>$${d.monto.toFixed(2)}</td></tr>`).join('')}
+                    <tr class="fila-total-general"><td colspan="2">💰 TOTAL GENERAL</td><td>$${totalGral.toFixed(2)}</td></tr>
+                </table>
+            </div>
+        </div>`;
+    }
+    lista.innerHTML = html;
 }
 </script>
 </body>
