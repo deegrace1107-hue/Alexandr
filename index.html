@@ -124,7 +124,7 @@
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
     <div class="aviso" id="estadoConexion">✅ Cargando datos compartidos...</div>
-    <button class="btn-actualizar" onclick="subirTodoYA()">🔄 SINCRONIZAR TODO AHORA</button>
+    <button class="btn-actualizar" onclick="subirTodoYA()">🔄 SINCRONIZAR DESDE LA NUBE</button>
 
     <div class="section">
         <h2>Configurar Materiales</h2>
@@ -225,26 +225,24 @@ let vistaAgrupada = false;
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 
 // ==============================================
-// 🚀 INICIO Y CONEXIÓN CORREGIDA
+// 🚀 INICIO Y SINCRONIZACIÓN DESDE CERO
 // ==============================================
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
         console.log("✅ Conectado a Supabase correctamente");
+        // CARGAMOS DIRECTAMENTE DESDE LA NUBE, NO USAMOS COPIA VIEJA
+        await subirTodoYA();
     } catch (e) {
         alert("❌ Error en la clave de Supabase: revisa que no falte ni sobre nada");
         return;
     }
-
-    await cargarMaterialesLocales();
-    await cargarHistorialYTotalesLocales();
-    setTimeout(() => subirTodoYA(), 500);
 });
 
 function actualizarEstadoConexion(conectado, mensaje = "") {
     const aviso = document.getElementById('estadoConexion');
     if(conectado) {
-        aviso.innerHTML = mensaje || "✅ Conectado | Todos ven los mismos datos";
+        aviso.innerHTML = mensaje || "✅ Conectado | Datos traídos de la nube";
         aviso.style.background = "#e8f5e9";
         aviso.style.color = "#1b5e20";
     } else {
@@ -259,18 +257,18 @@ function guardarComoPendiente(tipo, datos){
     localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
 }
 
-// ✅ FUNCIÓN DEFINITIVA: SUBE TODO Y TRAE LO REAL DE LA NUBE
+// ✅ FUNCIÓN DEFINITIVA: BORRA LO VIEJO Y TRAE SOLO LO DE LA NUBE
 async function subirTodoYA(){
     if(!navigator.onLine) {
         actualizarEstadoConexion(false);
         return alert("Conéctate a internet primero mi vida");
     }
 
-    actualizarEstadoConexion(true, "🔄 Subiendo y sincronizando...");
+    actualizarEstadoConexion(true, "🔄 Borrando copia vieja y sincronizando...");
     let subidos = 0;
 
     try {
-        // 1. SUBE LO QUE TIENES PENDIENTE
+        // 1. SUBE LO PENDIENTE PRIMERO
         for(let i = 0; i < datosPendientes.length; i++){
             const item = datosPendientes[i];
             if(item.tipo === 'factura'){
@@ -285,48 +283,37 @@ async function subirTodoYA(){
         datosPendientes = [];
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
 
-        // 2. TRAE LO ACTUALIZADO DE LA NUBE (NO LO LOCAL)
+        // 2. BORRA LA COPIA VIEJA Y TRAE LO REAL DE LA NUBE
         const { data: matNube, error: errMat } = await supabaseCliente.from('materiales').select('*').order('nombre');
-        if(!errMat && matNube) {
-            localStorage.setItem('materialesLocales', JSON.stringify(matNube));
-            actualizarTablaMateriales(matNube);
-            actualizarSelectMateriales(matNube);
+        if(!errMat) {
+            localStorage.setItem('materialesLocales', JSON.stringify(matNube || []));
+            actualizarTablaMateriales(matNube || []);
+            actualizarSelectMateriales(matNube || []);
         }
 
         const { data: facNube, error: errFac } = await supabaseCliente.from('facturas').select('*').order('fecha_completa', {ascending:false});
-        if(!errFac && facNube) {
-            localStorage.setItem('facturasLocales', JSON.stringify(facNube));
-            procesarFacturas(facNube);
+        if(!errFac) {
+            localStorage.setItem('facturasLocales', JSON.stringify(facNube || []));
+            procesarFacturas(facNube || []);
         }
 
         // 3. MENSAJE FINAL
-        let mensaje = "✅ SINCRONIZACIÓN PERFECTA!";
-        if(subidos > 0) mensaje += ` Se subieron ${subidos} registros a la nube.`;
-        alert(mensaje + "\nAhora ves exactamente lo que hay en Supabase.");
+        let mensaje = "✅ SINCRONIZACIÓN PERFECTA! Ahora ves solo lo que hay en la base de datos.";
+        if(subidos > 0) mensaje += ` Se subieron ${subidos} registros nuevos.`;
+        alert(mensaje);
         actualizarEstadoConexion(true);
 
     } catch (err) {
         console.error("Error sincronizando:", err);
-        alert("❌ Error: " + err.message + "\nRevisa la clave o las tablas en Supabase");
-        actualizarEstadoConexion(true, "⚠️ Usando datos guardados");
+        alert("❌ Error: " + err.message);
+        actualizarEstadoConexion(true, "⚠️ Revisa la clave o las tablas en Supabase");
     }
 }
 
 window.addEventListener('online', subirTodoYA);
 window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
-// ========== CARGA LOCAL (IGUAL QUE ANTES) ==========
-async function cargarMaterialesLocales(){
-    const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    actualizarTablaMateriales(locales);
-    actualizarSelectMateriales(locales);
-}
-async function cargarHistorialYTotalesLocales(){
-    const locales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
-    procesarFacturas(locales);
-}
-
-// ========== EL RESTO DE FUNCIONES: EXACTAMENTE IGUALES QUE LAS TENÍAS ==========
+// ========== RESTO DE FUNCIONES: IGUALES QUE TUS ORIGINALES ==========
 async function guardarMaterial(){
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
