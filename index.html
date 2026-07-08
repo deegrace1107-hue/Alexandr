@@ -124,7 +124,7 @@
     <h1>♻️ Recicladora Alexander</h1>
     <div class="aviso" id="estado">✅ Cargando tus datos...</div>
 
-    <button class="btn-subir-nube" onclick="subirDatosManual()">☁️ SUBIR DATOS</button>
+    <button class="btn-subir-nube" onclick="subirDatosPendientes()">☁️ SUBIR DATOS PENDIENTES</button>
 
     <div class="section">
         <h2>Configurar Materiales</h2>
@@ -205,7 +205,7 @@
 </div>
 
 <script>
-// TUS DATOS - PON TU CLAVE COMPLETA AQUÍ
+// TU CONEXIÓN SEGURA
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0Mjc0NTYsImV4cCI6MjEwMTAwMzA1Nn0.75tCjYx0y0s5Z8z9X2pQ3rT4sU5vW6xY7zA8bC9dE0fG1hJ2kL3mN4oP5qR6sT7uV8wX9yZ0aA1bB2cC3dD4eE5fF6gG7hH8iI9jJ0kK1lL2mN3nO4oP5pQ6qR7rS8sT9tU0vV1wW2xX3yY4zZ";
 const supabase = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
@@ -215,84 +215,90 @@ let totalesPorDia = {};
 let totalesOriginales = {};
 let facturaActual = null;
 let vistaAgrupada = false;
+let cambiosPendientes = JSON.parse(localStorage.getItem("cambiosPendientes") || "[]");
 
-// ✅ PRIMERO CARGA LO TUYO AL INSTANTE, SIN ESPERAR NADA
-document.addEventListener('DOMContentLoaded', () => {
+// ✅ INICIO: CARGA LO QUE TIENES EN CELULAR, LUEGO TRAE DE LA NUBE Y SINCRONIZA
+document.addEventListener('DOMContentLoaded', async () => {
+    actualizarEstado("✅ Cargando tus datos guardados...");
     cargarDatosLocales();
-    actualizarEstado("✅ Tus datos están listos");
-    // LUEGO SINCRONIZA EN SEGUNDO PLANO
-    setTimeout(sincronizarDatos, 1500);
-    window.addEventListener('online', sincronizarDatos);
+    await traerDatosDeLaNube();
+    // CUANDO VUELVAS A TENER INTERNET, SUBE LO QUE TENÍAS PENDIENTE
+    window.addEventListener('online', subirDatosPendientes);
+    setTimeout(subirDatosPendientes, 2000);
 });
-
-function cargarDatosLocales(){
-    const materiales = JSON.parse(localStorage.getItem('materiales') || '[]');
-    actualizarTablaMateriales(materiales);
-    actualizarSelectMateriales(materiales);
-    const facturas = JSON.parse(localStorage.getItem('historial') || '[]');
-    procesarFacturas(facturas);
-}
 
 function actualizarEstado(texto) {
     document.getElementById('estado').textContent = texto;
 }
 
-// ✅ GUARDA SEGURO Y LIMPIO PARA QUE ENTRE PERFECTO A LA NUBE
-async function guardarSeguro(claveLocal, datos, tablaNube) {
-    localStorage.setItem(claveLocal, JSON.stringify(datos));
-    if(navigator.onLine){
+// ✅ GUARDA SIEMPRE PRIMERO EN TU CELULAR, SIN IMPORTAR LA SEÑAL
+function guardarLocal(clave, datos) {
+    localStorage.setItem(clave, JSON.stringify(datos));
+}
+
+// ✅ AGREGA CAMBIOS A LA LISTA PENDIENTE SI NO HAY INTERNET
+function agregarPendiente(tipo, datos) {
+    cambiosPendientes.push({tipo, datos, fecha: new Date().toISOString()});
+    guardarLocal("cambiosPendientes", cambiosPendientes);
+}
+
+// ✅ SUBE TODO LO PENDIENTE A LA BASE DE DATOS CUANDO HAY SEÑAL
+async function subirDatosPendientes(){
+    if(!navigator.onLine || cambiosPendientes.length === 0) return;
+    actualizarEstado("🔄 Subiendo tus cambios a la base...");
+    
+    const exitosos = [];
+    for(const cambio de cambiosPendientes){
         try {
-            // Quitamos el campo id extra que no necesita la tabla
-            const datosLimpios = datos.map(({id, ...camposCorrectos}) => camposCorrectos);
-            await supabase.from(tablaNube).upsert(datosLimpios);
+            if(cambio.tipo === "material"){
+                await supabase.from("materiales").upsert(cambio.datos, {onConflict: "nombre"});
+            } else if(cambio.tipo === "factura"){
+                await supabase.from("facturas").insert([cambio.datos]);
+            } else if(cambio.tipo === "borrarMaterial"){
+                await supabase.from("materiales").delete().eq("nombre", cambio.datos.nombre);
+            }
+            exitosos.push(cambio);
         } catch (e) {
-            console.log("Guardado en celular, se subirá luego:", e.message);
+            console.log("No se pudo subir, se intentará luego:", e);
         }
     }
+    
+    // QUITAMOS LOS QUE YA SE SUBIERON
+    cambiosPendientes = cambiosPendientes.filter(c => !exitosos.includes(c));
+    guardarLocal("cambiosPendientes", cambiosPendientes);
+    
+    await traerDatosDeLaNube();
+    actualizarEstado(`✅ Listo: ${exitosos.length} cambios subidos`);
+    alert(`✅ Se subieron ${exitosos.length} cambios a tu base de datos`);
 }
 
-async function sincronizarDatos(){
-    if(!navigator.onLine) return;
+// ✅ TRAE TODOS TUS DATOS SEGUROS DE LA NUBE
+async function traerDatosDeLaNube(){
     try {
-        const {data: matNube} = await supabase.from('materiales').select('*');
-        const {data: facNube} = await supabase.from('facturas').select('*');
+        const {data: materiales} = await supabase.from('materiales').select('*');
+        const {data: facturas} = await supabase.from('facturas').select('*');
         
-        const matLocal = JSON.parse(localStorage.getItem('materiales') || '[]');
-        const facLocal = JSON.parse(localStorage.getItem('historial') || '[]');
+        if(materiales) guardarLocal("materiales", materiales);
+        if(facturas) guardarLocal("historial", facturas);
         
-        // Fusionamos sin duplicar
-        const matFinal = fusionarDatos(matLocal, matNube || []);
-        const facFinal = fusionarDatos(facLocal, facNube || []);
-        
-        localStorage.setItem('materiales', JSON.stringify(matFinal));
-        localStorage.setItem('historial', JSON.stringify(facFinal));
-        
-        actualizarTablaMateriales(matFinal);
-        actualizarSelectMateriales(matFinal);
-        procesarFacturas(facFinal);
-        
-        // Enviamos limpio a la base de datos
-        const matLimpio = matFinal.map(({id, ...r}) => r);
-        const facLimpio = facFinal.map(({id, ...r}) => r);
-        await supabase.from('materiales').upsert(matLimpio);
-        await supabase.from('facturas').upsert(facLimpio);
-        
-        actualizarEstado("✅ Todo sincronizado perfectamente");
+        actualizarTablaMateriales(materiales || []);
+        actualizarSelectMateriales(materiales || []);
+        procesarFacturas(facturas || []);
     } catch (e) {
-        actualizarEstado("⚠️ Pulsa SUBIR DATOS para confirmar");
+        actualizarEstado("📴 Sin conexión, usando datos guardados");
     }
 }
 
-function fusionarDatos(local, nube){
-    const mapa = new Map();
-    local.forEach(item => mapa.set(item.nombre || item.fecha_completa, item));
-    nube.forEach(item => {
-        const clave = item.nombre || item.fecha_completa;
-        if(!mapa.has(clave)) mapa.set(clave, item);
-    });
-    return Array.from(mapa.values());
+// ✅ CARGA LO QUE TIENES GUARDADO EN EL CELULAR
+function cargarDatosLocales(){
+    const materiales = JSON.parse(localStorage.getItem('materiales') || '[]');
+    const facturas = JSON.parse(localStorage.getItem('historial') || '[]');
+    actualizarTablaMateriales(materiales);
+    actualizarSelectMateriales(materiales);
+    procesarFacturas(facturas);
 }
 
+// RESTO DE FUNCIONES IGUALES, PERO AHORA USAN EL SISTEMA SINCRONIZADO
 async function guardarMaterial(){
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
@@ -300,16 +306,21 @@ async function guardarMaterial(){
     if(!nombre) return alert('Escribe el nombre del material');
     if(isNaN(precio) || precio <= 0) return alert('Pon un precio mayor a 0');
     
-    const listaActual = JSON.parse(localStorage.getItem('materiales') || '[]');
-    if(listaActual.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) return alert(`⚠️ "${nombre}" ya existe`);
-    listaActual.push({ nombre, unidad, precio });
+    const nuevoMaterial = { nombre, unidad, precio };
+    // GUARDAMOS PRIMERO EN LOCAL
+    const locales = JSON.parse(localStorage.getItem('materiales') || '[]');
+    locales.push(nuevoMaterial);
+    guardarLocal('materiales', locales);
+    actualizarTablaMateriales(locales);
+    actualizarSelectMateriales(locales);
     
-    await guardarSeguro('materiales', listaActual, 'materiales');
-    actualizarTablaMateriales(listaActual);
-    actualizarSelectMateriales(listaActual);
-    
+    // AGREGAMOS A PENDIENTES PARA SUBIR DESPUÉS
+    agregarPendiente("material", nuevoMaterial);
     document.getElementById('nombreMaterial').value = '';
     document.getElementById('precioUnitario').value = '';
+    
+    // SI HAY INTERNET, LO SUBIMOS YA
+    if(navigator.onLine) subirDatosPendientes();
 }
 
 function actualizarTablaMateriales(lista){
@@ -327,9 +338,12 @@ function actualizarTablaMateriales(lista){
 async function eliminarMaterial(nombre){
     let locales = JSON.parse(localStorage.getItem('materiales') || '[]');
     locales = locales.filter(m => m.nombre !== nombre);
-    await guardarSeguro('materiales', locales, 'materiales');
+    guardarLocal('materiales', locales);
     actualizarTablaMateriales(locales);
     actualizarSelectMateriales(locales);
+    
+    agregarPendiente("borrarMaterial", {nombre});
+    if(navigator.onLine) subirDatosPendientes();
 }
 
 function actualizarSelectMateriales(lista){
@@ -388,18 +402,22 @@ async function generarFacturas(){
     
     facturaActual = { fecha, hora, fecha_completa: fechaCompleta, total_general: totalGeneral, detalles: [...carrito] };
     
+    // GUARDAMOS PRIMERO EN LOCAL
     const locales = JSON.parse(localStorage.getItem('historial') || '[]');
     locales.unshift(facturaActual);
-    
-    await guardarSeguro('historial', locales, 'facturas');
+    guardarLocal('historial', locales);
     procesarFacturas(locales);
-
+    
+    // AGREGAMOS A PENDIENTES
+    agregarPendiente("factura", facturaActual);
     mostrarCliente();
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
     document.getElementById('btnVerCliente').style.display = 'inline-block';
     document.getElementById("ventanaFactura").style.display = "flex";
     carrito = [];
     actualizarCarrito();
+    
+    if(navigator.onLine) subirDatosPendientes();
 }
 
 function mostrarCliente(){
@@ -493,13 +511,6 @@ function verFacturaGuardada(factura, tipo){
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
     document.getElementById('btnVerCliente').style.display = 'inline-block';
     document.getElementById("ventanaFactura").style.display = "flex";
-}
-
-async function subirDatosManual() {
-    if(!navigator.onLine) return alert("⚠️ Conéctate a internet primero corazón");
-    actualizarEstado("🔄 Subiendo todos tus datos...");
-    await sincronizarDatos();
-    alert("✅ Todo quedó subido y sincronizado perfectamente");
 }
 
 function cambiarVistaTotales(modo){ vistaAgrupada = modo; actualizarVistaTotalesPorDia(); }
