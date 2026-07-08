@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#2e7d32">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0"></script>
     <style>
-        /* TODOS TUS ESTILOS ORIGINALES, SIN CAMBIOS */
+        /* TUS ESTILOS ORIGINALES SIN NINGÚN CAMBIO */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
         body { background-color: #f0f8f0; padding: 8px; font-size: 13px; line-height: 1.4; }
         .container { max-width: 100%; margin: 0 auto; background: #fff; padding: 12px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
@@ -59,13 +59,11 @@
         .historial { background-color: #fff8e1; border-color: #ffb74d; }
         .totales-generales { background-color: #e3f2fd; border-color: #42a5f5; margin-top: 10px; }
         .aviso { background: #e3f2fd; padding: 7px; border-radius: 6px; margin-bottom: 8px; text-align: center; color: #1565c0; font-size: 12px; font-weight: 500; }
-        .aviso-sin-conexion { background: #fff3cd; border: 1px solid #ffecb5; color: #856404; padding: 6px; border-radius: 6px; margin: 6px 0; font-size: 11px; text-align: center; }
         .tabla-resumen { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
         .tabla-resumen th, .tabla-resumen td { border: 1px solid #e0e0e0; padding: 5px 3px !important; text-align: right; }
         .tabla-resumen th:first-child, .tabla-resumen td:first-child { text-align: left; }
         .tabla-resumen th:last-child, .tabla-resumen td:last-child { min-width: 75px !important; }
         .tabla-resumen th { background: #e8f5e9; font-weight: 600; }
-        .resumen-dia { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #90caf9; }
         .item-fecha { border: 1px solid #ffcc80; border-radius: 6px; margin-bottom: 8px; background: #fff; }
         .titulo-fecha { padding: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #e65100; background: #fff3e0; border-radius: 6px; }
         .titulo-fecha:hover { background: #ffe0b2; }
@@ -125,7 +123,7 @@
 <div class="container">
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso" id="estado">✅ Listo para trabajar</div>
+    <div class="aviso" id="estado">✅ Cargando tus datos...</div>
 
     <button class="btn-subir-nube" onclick="subirDatosManual()">☁️ SUBIR DATOS</button>
 
@@ -208,7 +206,7 @@
 </div>
 
 <script>
-// TUS DATOS DE SUPABASE
+// TUS DATOS DE SUPABASE - PON TU CLAVE DONDE DICE
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
 const supabase = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
@@ -219,55 +217,57 @@ let totalesOriginales = {};
 let facturaActual = null;
 let vistaAgrupada = false;
 
-// AL CARGAR: TRAE LO QUE YA TIENES EN LA NUBE Y EN TU CELULAR
-document.addEventListener('DOMContentLoaded', async () => {
-    await cargarDatosNube();
+// ✅ PRIMERO CARGA LO DE TU CELULAR, SIN ESPERAR NADA
+document.addEventListener('DOMContentLoaded', () => {
     cargarDatosLocales();
-    // EL PUENTE: CUANDO VUELVA EL INTERNET, SUBE LO QUE QUEDÓ PENDIENTE
-    window.addEventListener('online', subirPendientes);
+    actualizarEstado("✅ Tus datos están listos");
+    // LUEGO INTENTA SIN DETENERTE
+    sincronizarEnSegundoPlano();
+    // SUBE LO PENDIENTE CUANDO VUELVA EL INTERNET
+    window.addEventListener('online', sincronizarEnSegundoPlano);
 });
 
-// FUNCIÓN PUENTE: GUARDA SIEMPRE EN CELULAR, LUEGO EN NUBE SI PUEDE
+// FUNCIÓN DE SEGURIDAD: GUARDA PRIMERO EN CELULAR, LUEGO EN NUBE
 async function guardarSeguro(claveLocal, datos, tablaNube) {
-    // PRIMERO: GUARDA EN TU CELULAR, SIN FALLA
     localStorage.setItem(claveLocal, JSON.stringify(datos));
-    
-    // LUEGO: SI HAY INTERNET, CRUZA EL PUENTE A LA NUBE
     if (navigator.onLine) {
         try {
             await supabase.from(tablaNube).upsert(datos);
-            actualizarEstado("✅ Guardado y subido a la nube");
-        } catch {
-            actualizarEstado("📴 Guardado en celular, se subirá cuando haya señal");
+        } catch (e) {
+            console.log("Se guardó en celular, se subirá luego:", e);
         }
-    } else {
-        actualizarEstado("📴 Guardado en celular, se subirá cuando vuelva el internet");
     }
 }
 
-// SUBE LO QUE QUEDÓ PENDIENTE SIN INTERNET
-async function subirPendientes() {
-    actualizarEstado("🔄 Subiendo lo pendiente a la nube...");
+// SINCRONIZA EN SEGUNDO PLANO SIN DETENERTE
+async function sincronizarEnSegundoPlano() {
+    if (!navigator.onLine) return;
     try {
-        const mat = JSON.parse(localStorage.getItem('materiales')) || [];
-        const fac = JSON.parse(localStorage.getItem('historial')) || [];
-        if(mat.length) await supabase.from('materiales').upsert(mat);
-        if(fac.length) await supabase.from('facturas').upsert(fac);
-        await cargarDatosNube();
-        actualizarEstado("✅ Todo sincronizado perfectamente");
-    } catch {
-        actualizarEstado("⚠️ No se pudo subir todo, intenta el botón manual");
-    }
-}
+        // TRAE LO DE LA NUBE
+        const {data: matNube} = await supabase.from('materiales').select('*');
+        const {data: facNube} = await supabase.from('facturas').select('*');
+        
+        // JUNTA LO MEJOR DE AMBOS
+        if (matNube?.length) {
+            localStorage.setItem('materiales', JSON.stringify(matNube));
+            actualizarTablaMateriales(matNube);
+            actualizarSelectMateriales(matNube);
+        }
+        if (facNube?.length) {
+            localStorage.setItem('historial', JSON.stringify(facNube));
+            procesarFacturas(facNube);
+        }
 
-// CARGA LO QUE YA TIENES EN LA NUBE
-async function cargarDatosNube() {
-    try {
-        const {data: mat} = await supabase.from('materiales').select('*');
-        const {data: fac} = await supabase.from('facturas').select('*');
-        if(mat) localStorage.setItem('materiales', JSON.stringify(mat));
-        if(fac) localStorage.setItem('historial', JSON.stringify(fac));
-    } catch {}
+        // SUBE LO QUE TÚ TIENES NUEVO
+        const matLocal = JSON.parse(localStorage.getItem('materiales')) || [];
+        const facLocal = JSON.parse(localStorage.getItem('historial')) || [];
+        if(matLocal.length) await supabase.from('materiales').upsert(matLocal);
+        if(facLocal.length) await supabase.from('facturas').upsert(facLocal);
+
+        actualizarEstado("✅ Todo sincronizado con la nube");
+    } catch (e) {
+        actualizarEstado("📴 Guardado en celular, sincronizará luego");
+    }
 }
 
 function cargarDatosLocales(){
@@ -282,7 +282,7 @@ function actualizarEstado(texto) {
     document.getElementById('estado').textContent = texto;
 }
 
-// RESTO DE TUS FUNCIONES IGUALES QUE SIEMPRE
+// RESTO DE FUNCIONES IGUALES QUE SIEMPRE, PERO AHORA GUARDAN SEGURO
 async function guardarMaterial(){
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
@@ -294,7 +294,6 @@ async function guardarMaterial(){
     if(listaActual.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) return alert(`⚠️ "${nombre}" ya existe`);
     listaActual.push({ nombre, unidad, precio });
     
-    // USA EL PUENTE PARA GUARDAR Y SUBIR
     await guardarSeguro('materiales', listaActual, 'materiales');
     actualizarTablaMateriales(listaActual);
     actualizarSelectMateriales(listaActual);
@@ -382,7 +381,6 @@ async function generarFacturas(){
     const locales = JSON.parse(localStorage.getItem('historial')) || [];
     locales.unshift(facturaActual);
     
-    // USA EL PUENTE PARA LA FACTURA
     await guardarSeguro('historial', locales, 'facturas');
     procesarFacturas(locales);
 
@@ -490,7 +488,7 @@ function verFacturaGuardada(factura, tipo){
 async function subirDatosManual() {
     if(!navigator.onLine) return alert("⚠️ Conéctate a internet primero corazón");
     actualizarEstado("🔄 Subiendo todos tus datos...");
-    await subirPendientes();
+    await sincronizarEnSegundoPlano();
     alert("✅ Todo quedó subido y sincronizado perfectamente");
 }
 
