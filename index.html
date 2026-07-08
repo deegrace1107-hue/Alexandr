@@ -225,7 +225,7 @@ console.log("✅ Modo sin conexión activado: arrancando inmediatamente");
 // ==============================================
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
-const VERSION_APP = "1.2"; // Versión con arreglo definitivo sin conexión
+const VERSION_APP = "1.3"; // Versión con fecha y hora en factura
 
 let supabaseCliente;
 let carrito = [];
@@ -242,7 +242,7 @@ let sincronizando = false;
 function mostrarAvisoActualizacion() {
   const versionGuardada = localStorage.getItem('versionRecicladora');
   if (versionGuardada !== VERSION_APP) {
-    alert("✅ ¡Aplicación actualizada correctamente!\n\nAhora funciona 100% sin internet:\nNo se bloquea más, guarda todo en tu celular y se sincroniza sola al tener señal.");
+    alert("✅ ¡Aplicación actualizada correctamente!\n\nAhora funciona 100% sin internet y muestra la fecha y hora completa en las facturas.");
     localStorage.setItem('versionRecicladora', VERSION_APP);
   }
 }
@@ -315,7 +315,7 @@ window.addEventListener('online', () => {
 });
 window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
-// ========== RESTO DE FUNCIONES IGUALES, AHORA MÁS SEGURAS ==========
+// ========== RESTO DE FUNCIONES IGUALES, AHORA CON FECHA Y HORA ==========
 async function cargarMateriales(){
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     actualizarTablaMateriales(datosLocales);
@@ -460,8 +460,11 @@ function actualizarCarrito(){
 async function generarFacturas(){
     if(carrito.length === 0) return alert('Agrega al menos una pesada');
     const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
+    const fechaCompleta = new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' });
     const fecha = new Date().toLocaleDateString('es-EC');
-    facturaActual = { fecha, total_general: totalGeneral, detalles: [...carrito] };
+    const hora = new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+    
+    facturaActual = { fecha, hora, fecha_completa: fechaCompleta, total_general: totalGeneral, detalles: [...carrito] };
     
     try {
         await supabaseCliente.from('facturas').insert([facturaActual]);
@@ -494,6 +497,7 @@ function mostrarCliente(){
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">RECIBO DE PAGO - CLIENTE</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
+        <p style="font-size:14px;"><strong>Hora:</strong> ${facturaActual.hora}</p>
         <p style="font-size:14px;"><strong>Recicladora Alexander</strong></p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
         <table class="tabla-factura">
@@ -512,6 +516,7 @@ function mostrarDetallada(){
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">FACTURA DETALLADA - CONTROL</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
+        <p style="font-size:14px;"><strong>Hora:</strong> ${facturaActual.hora}</p>
         <p style="font-size:14px;"><strong>Recicladora Alexander</strong></p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
         <table class="tabla-factura">
@@ -588,9 +593,10 @@ function procesarFacturas(facturas){
                 </div>
                 <div class="contenido-fechas">
                     <table class="tabla-resumen">
-                        <tr><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
+                        <tr><th>Hora</th><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
                         ${listaFacturas.map(f => `
                         <tr>
+                            <td>${f.hora || 'Sin hora'}</td>
                             <td>$${f.total_general.toFixed(2)}</td>
                             <td>
                                 <button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g, "&#39;")}, "cliente")'>Ver</button>
