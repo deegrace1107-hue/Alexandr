@@ -49,9 +49,7 @@
             border-radius: 6px;
             border: 1px solid #e0e0e0;
         }
-        .table-wrap table {
-            min-width: 580px !important;
-        }
+        .table-wrap table { min-width: 580px !important; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
         th, td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: center; vertical-align: middle; }
         th { background-color: #e8f5e9; color: #1b5e20; font-weight: 600; }
@@ -233,10 +231,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     actualizarEstadoConexion(navigator.onLine);
     await cargarMateriales();
     await cargarHistorialYTotales();
-    await sincronizarPendientes(); // Sube pendientes al abrir
+    await sincronizarPendientes();
 });
 
-// ========== CONEXIÓN Y SINCRONIZACIÓN ARREGLADA ==========
 function actualizarEstadoConexion(conectado) {
     const aviso = document.getElementById('estadoConexion');
     if(conectado) {
@@ -250,7 +247,7 @@ function actualizarEstadoConexion(conectado) {
     }
 }
 
-// ✅ FUNCIÓN QUE AHORA SÍ SUBE TODO A SUPABASE SIN FALLOS
+// ✅ AHORA SÍ INCLUYE LA HORA, YA EXISTE EN TU TABLA
 async function sincronizarPendientes(){
     if(sincronizando || datosPendientes.length === 0 || !navigator.onLine) return;
     sincronizando = true;
@@ -261,8 +258,7 @@ async function sincronizarPendientes(){
         for(const item of datosPendientes){
             try {
                 if(item.tipo === 'factura'){
-                    // Enviamos los campos EXACTOS que espera tu tabla
-                    const { error, data } = await supabaseCliente
+                    const { error } = await supabaseCliente
                         .from('facturas')
                         .insert([{
                             fecha: item.datos.fecha,
@@ -270,20 +266,18 @@ async function sincronizarPendientes(){
                             total_general: item.datos.total_general,
                             detalles: item.datos.detalles,
                             creado_el: item.datos.creado_el
-                        }])
-                        .select();
+                        }]);
                     
                     if(!error) {
                         subidos++;
-                        console.log("✅ Subida exitosa a Supabase:", data);
+                        console.log("✅ Subida exitosa con fecha y hora");
                     } else {
-                        console.log("❌ Error de Supabase:", error.message, error.details);
-                        alert(`Error al subir: ${error.message}`);
+                        console.log("❌ Error Supabase:", error.message);
                         quedanPendientes.push(item);
                     }
                 }
             } catch (err) {
-                console.log("⚠️ Error de conexión:", err);
+                console.log("⚠️ Error conexión:", err);
                 quedanPendientes.push(item);
             }
         }
@@ -291,20 +285,13 @@ async function sincronizarPendientes(){
         datosPendientes = quedanPendientes;
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
         
-        if(subidos > 0){
-            alert(`✅ Se subieron ${subidos} compras a tu base de datos!`);
-            await cargarHistorialYTotales();
-        }
+        if(subidos > 0) alert(`✅ Se subieron ${subidos} compras completas a tu base!`);
     } finally {
         sincronizando = false;
     }
 }
 
-// Cuando vuelve el internet, sube todo solo
-window.addEventListener('online', () => {
-    actualizarEstadoConexion(true);
-    sincronizarPendientes();
-});
+window.addEventListener('online', () => { actualizarEstadoConexion(true); sincronizarPendientes(); });
 window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
 // ========== MATERIALES ==========
@@ -341,12 +328,11 @@ async function guardarMaterial(){
 
     try {
         const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
-        if(!error) alert('✅ Material guardado en nube');
-        else throw new Error();
+        alert(!error ? '✅ Material guardado en nube' : '⚠️ Guardado en celular, se subirá luego');
     } catch {
         datosPendientes.push({tipo:'material', datos:nuevo});
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-        alert('⚠️ Guardado en celular, se subirá luego');
+        alert('⚠️ Guardado en celular');
     }
 
     document.getElementById('nombreMaterial').value = '';
@@ -357,12 +343,8 @@ async function guardarMaterial(){
 function actualizarTablaMateriales(lista){
     const cuerpo = document.getElementById('cuerpoTabla');
     cuerpo.innerHTML = lista.map((m, i) => `
-        <tr>
-            <td>${m.nombre}</td>
-            <td>${m.unidad}</td>
-            <td>$${m.precio.toFixed(2)}</td>
-            <td><button class="btn-danger" onclick="eliminarMaterial(${m.id || 'l-'+i})">Eliminar</button></td>
-        </tr>
+        <tr><td>${m.nombre}</td><td>${m.unidad}</td><td>$${m.precio.toFixed(2)}</td>
+        <td><button class="btn-danger" onclick="eliminarMaterial(${m.id || 'l-'+i})">Eliminar</button></td></tr>
     `).join('');
 }
 
@@ -374,12 +356,8 @@ async function eliminarMaterial(id){
         cargarMateriales();
         return;
     }
-    try {
-        await supabaseCliente.from('materiales').delete().eq('id', id);
-        cargarMateriales();
-    } catch {
-        alert('Se eliminará cuando haya internet');
-    }
+    try { await supabaseCliente.from('materiales').delete().eq('id', id); cargarMateriales(); }
+    catch { alert('Se eliminará cuando haya internet'); }
 }
 
 function actualizarSelectMateriales(lista){
@@ -393,14 +371,8 @@ async function agregarAlCarrito(){
     if(!cantidad || cantidad <=0) return alert('Escribe el peso recibido');
 
     let mat;
-    try {
-        const {data} = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).single();
-        mat = data;
-    } catch {}
-    if(!mat) {
-        const loc = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-        mat = loc.find(m => m.nombre === nombre);
-    }
+    try { const {data} = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).single(); mat = data; }
+    catch { const loc = JSON.parse(localStorage.getItem('materialesLocales')) || []; mat = loc.find(m => m.nombre === nombre); }
     if(!mat) return alert('Material no encontrado');
 
     carrito.push({ nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: mat.precio, total: cantidad * mat.precio });
@@ -408,27 +380,16 @@ async function agregarAlCarrito(){
     document.getElementById('cantidadRecibida').value = '';
 }
 
-function quitarDelCarrito(i){
-    carrito.splice(i,1);
-    actualizarCarrito();
-}
+function quitarDelCarrito(i){ carrito.splice(i,1); actualizarCarrito(); }
 
 function actualizarCarrito(){
     const lista = document.getElementById('listaCompra');
     if(carrito.length === 0){
         lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin pesadas agregadas</p>`;
     } else {
-        lista.innerHTML = `
-        <table class="tabla-resumen">
+        lista.innerHTML = `<table class="tabla-resumen">
             <tr><th>Material</th><th>Peso</th><th>Precio U.</th><th>Subtotal</th><th>Quitar</th></tr>
-            ${carrito.map((item,i) => `
-            <tr>
-                <td>${item.nombre}</td>
-                <td>${item.cantidad} ${item.unidad}</td>
-                <td>$${item.precio.toFixed(2)}</td>
-                <td>$${item.total.toFixed(2)}</td>
-                <td><button class="btn-quitar" onclick="quitarDelCarrito(${i})">❌</button></td>
-            </tr>`).join('')}
+            ${carrito.map((item,i) => `<tr><td>${item.nombre}</td><td>${item.cantidad} ${item.unidad}</td><td>$${item.precio.toFixed(2)}</td><td>$${item.total.toFixed(2)}</td><td><button class="btn-quitar" onclick="quitarDelCarrito(${i})">❌</button></td></tr>`).join('')}
         </table>`;
     }
     const total = carrito.reduce((s,i) => s+i.total, 0);
@@ -444,27 +405,24 @@ async function generarFacturas(){
     const creado_el = new Date().toISOString();
     facturaActual = { fecha, hora, total_general: totalGeneral, detalles: [...carrito], creado_el };
 
-    // Guardado local SIEMPRE
     facturasLocales.push(facturaActual);
     localStorage.setItem('facturasLocales', JSON.stringify(facturasLocales));
 
-    // Intento de subida a la nube
     let subidoBien = false;
     try {
-        const { error } = await supabaseCliente.from('facturas').insert([facturaActual]);
+        const { error } = await supabaseCliente.from('facturas').insert([{
+            fecha, hora, total_general: totalGeneral, detalles: facturaActual.detalles, creado_el
+        }]);
         if(!error) {
             subidoBien = true;
-            alert("✅ Venta guardada EXITOSAMENTE en tu base de datos!");
+            alert("✅ Venta guardada CON FECHA Y HORA en tu base de datos!");
         } else {
-            console.log("Error Supabase:", error);
             alert(`⚠️ No se subió: ${error.message}. Guardada en celular.`);
         }
     } catch (err) {
-        console.log("Error conexión:", err);
-        alert("⚠️ Sin internet: guardada en celular, se subirá luego");
+        alert("⚠️ Sin internet: guardada en celular, se subirá automáticamente cuando vuelvas a tener señal");
     }
 
-    // Si no se subió, guardamos para pendientes
     if(!subidoBien) {
         const yaExiste = datosPendientes.some(p => p.datos.fecha === fecha && p.datos.hora === hora);
         if(!yaExiste) {
@@ -530,42 +488,27 @@ function cerrarVentana(){
     document.getElementById('btnVerCliente').style.display = 'none';
 }
 
-// ========== FUNCIONES DE ELIMINAR AHORA SÍ FUNCIONALES ==========
+// ========== ELIMINAR TOTALES ==========
 function eliminarTotalMaterialPorDia(fecha, nombreMaterial){
-    if(!confirm(`¿Segura que quieres eliminar el material "${nombreMaterial}" del día ${fecha}?`)) return;
-    
-    // Eliminamos del total del día
+    if(!confirm(`¿Segura que quieres eliminar "${nombreMaterial}" del día ${fecha}?`)) return;
     if(totalesPorDia[fecha] && totalesPorDia[fecha][nombreMaterial]){
         delete totalesPorDia[fecha][nombreMaterial];
-        // Si el día queda vacío, borramos el día completo
-        if(Object.keys(totalesPorDia[fecha]).length === 0){
-            delete totalesPorDia[fecha];
-        }
-        
-        // Guardamos el cambio en el celular
+        if(Object.keys(totalesPorDia[fecha]).length === 0) delete totalesPorDia[fecha];
         totalesLocalesGuardados = {...totalesPorDia};
         localStorage.setItem('totalesLocales', JSON.stringify(totalesLocalesGuardados));
-        
-        // Actualizamos la vista
         actualizarVistaTotalesPorDia();
         alert("✅ Eliminado correctamente");
     }
 }
 
 function reiniciarMaterialNuevoPeriodo(nombreMaterial){
-    if(!confirm(`¿Segura que quieres borrar TODOS los registros de "${nombreMaterial}" de todos los días?`)) return;
-    
-    // Eliminamos el material de todos los días
+    if(!confirm(`¿Segura que quieres borrar TODOS los registros de "${nombreMaterial}"?`)) return;
     Object.keys(totalesPorDia).forEach(fecha => {
         if(totalesPorDia[fecha][nombreMaterial]){
             delete totalesPorDia[fecha][nombreMaterial];
-            if(Object.keys(totalesPorDia[fecha]).length === 0){
-                delete totalesPorDia[fecha];
-            }
+            if(Object.keys(totalesPorDia[fecha]).length === 0) delete totalesPorDia[fecha];
         }
     });
-    
-    // Guardamos cambio y actualizamos
     totalesLocalesGuardados = {...totalesPorDia};
     localStorage.setItem('totalesLocales', JSON.stringify(totalesLocalesGuardados));
     actualizarVistaTotalesPorDia();
@@ -580,11 +523,9 @@ async function cargarHistorialYTotales(){
         if(!error) facturasNube = data;
     } catch {}
 
-    // Unimos nube y celular para ver todas
     const todas = [...facturasNube, ...facturasLocales];
     const unicas = Array.from(new Map(todas.map(f => [`${f.fecha}-${f.hora}-${f.total_general}`, f])).values());
     
-    // Si tenemos totales guardados localmente los usamos, si no los calculamos
     if(Object.keys(totalesLocalesGuardados).length > 0){
         totalesPorDia = {...totalesLocalesGuardados};
         actualizarVistaTotalesPorDia();
@@ -606,7 +547,6 @@ function procesarFacturas(facturas){
             totalesPorDia[fecha][item.nombre].montoTotal += item.total;
         });
     });
-    // Guardamos los totales calculados
     totalesLocalesGuardados = {...totalesPorDia};
     localStorage.setItem('totalesLocales', JSON.stringify(totalesLocalesGuardados));
     actualizarVistaTotalesPorDia();
@@ -627,13 +567,7 @@ function procesarFacturas(facturas){
             <div class="contenido-fechas">
                 <table class="tabla-resumen">
                     <tr><th>Hora</th><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
-                    ${arr.map(f => `
-                    <tr>
-                        <td>${f.hora}</td>
-                        <td>$${f.total_general.toFixed(2)}</td>
-                        <td><button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"cliente")'>Ver</button></td>
-                        <td><button class="btn-detallada" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td>
-                    </tr>`).join('')}
+                    ${arr.map(f => `<tr><td>${f.hora}</td><td>$${f.total_general.toFixed(2)}</td><td><button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"cliente")'>Ver</button></td><td><button class="btn-detallada" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td></tr>`).join('')}
                 </table>
             </div>
         </div>`).join('');
@@ -649,20 +583,11 @@ function cambiarVistaTotales(m){ vistaAgrupada = m; actualizarVistaTotalesPorDia
 function buscarPorFecha(){
     const busqueda = document.getElementById('fechaBusqueda').value.trim();
     if(!busqueda) return actualizarVistaTotalesPorDia();
-    
     const filtrados = {};
-    Object.entries(totalesPorDia).forEach(([fecha, datos]) => {
-        if(fecha.includes(busqueda)) filtrados[fecha] = datos;
-    });
-    const original = totalesPorDia;
-    totalesPorDia = filtrados;
-    actualizarVistaTotalesPorDia();
-    totalesPorDia = original;
+    Object.entries(totalesPorDia).forEach(([fecha, datos]) => { if(fecha.includes(busqueda)) filtrados[fecha] = datos; });
+    const original = totalesPorDia; totalesPorDia = filtrados; actualizarVistaTotalesPorDia(); totalesPorDia = original;
 }
-function verTodosLosDias(){
-    document.getElementById('fechaBusqueda').value = '';
-    actualizarVistaTotalesPorDia();
-}
+function verTodosLosDias(){ document.getElementById('fechaBusqueda').value = ''; actualizarVistaTotalesPorDia(); }
 
 function verFacturaGuardada(f,t){
     facturaActual = f;
@@ -699,25 +624,13 @@ function actualizarVistaTotalesPorDia(){
                 <div class="contenido-fechas">
                     <table class="tabla-resumen">
                         <tr><th>Material</th><th>Peso Total</th><th>Monto Total</th><th>Acción</th></tr>
-                        ${mats.map(([n,d])=>`
-                        <tr>
-                            <td>${n}</td><td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td><td>$${d.montoTotal.toFixed(2)}</td>
-                            <td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterialPorDia('${fecha}','${n}')">🔄 Eliminar</button></td>
-                        </tr>`).join('')}
-                        <tr class="fila-total-dia">
-                            <td colspan="3">💵 Total del día</td>
-                            <td>$${totalD.toFixed(2)}</td>
-                        </tr>
+                        ${mats.map(([n,d])=>`<tr><td>${n}</td><td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td><td>$${d.montoTotal.toFixed(2)}</td><td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterialPorDia('${fecha}','${n}')">🔄 Eliminar</button></td></tr>`).join('')}
+                        <tr class="fila-total-dia"><td colspan="3">💵 Total del día</td><td>$${totalD.toFixed(2)}</td></tr>
                     </table>
                 </div>
             </div>`;
         });
-        html += `
-        <table class="tabla-resumen">
-            <tr class="fila-total-general">
-                <td colspan="4" style="text-align:center;">💰 TOTAL GENERAL: $${totalG.toFixed(2)}</td>
-            </tr>
-        </table>`;
+        html += `<table class="tabla-resumen"><tr class="fila-total-general"><td colspan="4" style="text-align:center;">💰 TOTAL GENERAL: $${totalG.toFixed(2)}</td></tr></table>`;
     } else {
         const acu = {}; let totalG =0;
         fechas.forEach(f => {
@@ -734,14 +647,8 @@ function actualizarVistaTotalesPorDia(){
             <div class="contenido-fechas abierto">
                 <table class="tabla-resumen">
                     <tr><th>Material</th><th>Peso Total Sumado</th><th>Monto Total Sumado</th><th>Acción</th></tr>
-                    ${Object.entries(acu).map(([n,d])=>`
-                    <tr>
-                        <td>${n}</td><td>${d.cantidad.toFixed(1)} ${d.unidad}</td><td>$${d.monto.toFixed(2)}</td>
-                        <td><button class="btn-reiniciar-individual" onclick="reiniciarMaterialNuevoPeriodo('${n}')">🔄 Empezar de Cero</button></td>
-                    </tr>`).join('')}
-                    <tr class="fila-total-general">
-                        <td colspan="4" style="text-align:center;">💰 TOTAL GENERAL: $${totalG.toFixed(2)}</td>
-                    </tr>
+                    ${Object.entries(acu).map(([n,d])=>`<tr><td>${n}</td><td>${d.cantidad.toFixed(1)} ${d.unidad}</td><td>$${d.monto.toFixed(2)}</td><td><button class="btn-reiniciar-individual" onclick="reiniciarMaterialNuevoPeriodo('${n}')">🔄 Empezar de Cero</button></td></tr>`).join('')}
+                    <tr class="fila-total-general"><td colspan="4" style="text-align:center;">💰 TOTAL GENERAL: $${totalG.toFixed(2)}</td></tr>
                 </table>
             </div>
         </div>`;
