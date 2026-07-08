@@ -294,7 +294,7 @@ window.addEventListener('online', () => {
 });
 window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
-// ========== GESTIÓN DE MATERIALES (SIN REPETIDOS) ==========
+// ========== GESTIÓN DE MATERIALES ==========
 async function cargarMateriales(){
     let datosNube = [];
     try {
@@ -306,7 +306,6 @@ async function cargarMateriales(){
 
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     
-    // Eliminamos repetidos: se queda con el de la nube si hay coincidencia
     const mapUnico = new Map();
     datosNube.forEach(m => mapUnico.set(m.nombre.toLowerCase(), m));
     datosLocales.forEach(m => {
@@ -329,10 +328,9 @@ async function guardarMaterial(){
     if(!nombre) return alert('Escribe el nombre del material');
     if(isNaN(precio) || precio <= 0) return alert('Pon un precio mayor a 0');
     
-    // Verificamos que no exista ya antes de guardar
     const listaActual = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     const existe = listaActual.some(m => m.nombre.toLowerCase() === nombre.toLowerCase());
-    if(existe) return alert(`⚠️ El material "${nombre}" ya está registrado, no hace falta agregarlo otra vez`);
+    if(existe) return alert(`⚠️ El material "${nombre}" ya está registrado`);
 
     const nuevoMaterial = { nombre, unidad, precio };
     
@@ -481,6 +479,7 @@ function mostrarCliente(){
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">RECIBO DE PAGO - CLIENTE</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
+        <!-- ✅ APARECE LA HORA EN LA FACTURA -->
         <p style="font-size:14px;"><strong>Hora:</strong> ${facturaActual.hora}</p>
         <p style="font-size:14px;"><strong>Recicladora Alexander</strong></p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
@@ -500,6 +499,7 @@ function mostrarDetallada(){
         <h2 style="text-align:center; font-size:18px; margin-bottom:14px;">FACTURA DETALLADA - CONTROL</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p style="font-size:14px;"><strong>Fecha:</strong> ${facturaActual.fecha}</p>
+        <!-- ✅ APARECE LA HORA TAMBIÉN EN LA DETALLADA -->
         <p style="font-size:14px;"><strong>Hora:</strong> ${facturaActual.hora}</p>
         <p style="font-size:14px;"><strong>Recicladora Alexander</strong></p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
@@ -575,6 +575,7 @@ function procesarFacturas(facturas){
                 </div>
                 <div class="contenido-fechas">
                     <table class="tabla-resumen">
+                        <!-- ✅ AGREGAMOS LA COLUMNA DE HORA EN EL HISTORIAL -->
                         <tr><th>Hora</th><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
                         ${listaFacturas.map(f => `
                         <tr>
