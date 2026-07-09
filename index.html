@@ -329,17 +329,15 @@ function actualizarSelectMateriales(lista){
     document.getElementById('materialSeleccionado').innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio.toFixed(2)}/${m.unidad}</option>`).join('');
 }
 
-// ========== COMPRAS (ARREGLADO SIN INTERNET) ==========
+// ========== COMPRAS ==========
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
     if(!cantidad || cantidad <=0) return alert('Escribe el peso recibido');
 
-    // ✅ PRIMERO BUSCA EN TU CELULAR, SIN DEPENDER DE INTERNET
     const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     let mat = locales.find(m => m.nombre === nombre);
     
-    // SOLO si hay internet y no lo encuentra, busca en la nube
     if(!mat && navigator.onLine) {
         try { const {data} = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).single(); mat = data; }
         catch {}
@@ -383,13 +381,21 @@ async function generarFacturas(){
     let subidoBien = false;
     try {
         const { error } = await supabaseCliente.from('facturas').insert([facturaActual]);
-        if(!error) { subidoBien = true; alert("✅ Venta guardada y subida a tu base!"); }
-        else alert(`⚠️ Guardada en celular: ${error.message}`);
-    } catch { alert("⚠️ Sin internet: guardada segura en el celular"); }
+        if(!error) {
+            subidoBien = true;
+            alert("✅ Venta guardada y subida a tu base de datos!");
+        }
+    } catch {}
 
     if(!subidoBien) {
-        const yaExiste = datosPendientes.some(p => p.datos.fecha === fecha && p.datos.hora === hora);
-        if(!yaExiste) { datosPendientes.push({tipo:'factura', datos:facturaActual}); localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes)); }
+        const yaExiste = datosPendientes.some(p => 
+            p.datos.fecha === fecha && p.datos.hora === hora && p.datos.total_general === totalGeneral
+        );
+        if(!yaExiste) {
+            datosPendientes.push({tipo:'factura', datos:facturaActual});
+            localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+        }
+        alert("✅ Venta guardada SEGURA en tu celular. Se subirá automáticamente cuando vuelvas a tener internet.");
     }
 
     mostrarCliente();
@@ -474,17 +480,57 @@ function reiniciarMaterialNuevoPeriodo(nombreMaterial){
     alert("✅ Reiniciado correctamente");
 }
 
-// ========== HISTORIAL Y TOTALES ==========
+// ========== HISTORIAL Y TOTALES (SIN DUPLICADOS NI BLOQUEOS) ==========
 async function cargarHistorialYTotales(){
     let facturasNube = [];
-    try { const { data, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false}); if(!error) facturasNube = data || []; } catch {}
+    try { 
+        const { data, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false}); 
+        if(!error) facturasNube = data || []; 
+    } catch {}
+    
+    // ✅ JUNTA Y ELIMINA DUPLICADAS DE FORMA SEGURA
     const todas = [...facturasNube, ...facturasLocales];
-    const unicas = Array.from(new Map(todas.map(f => [`${f.fecha||''}-${f.hora||''}-${f.total_general||0}`, f])).values());
-    if(Object.keys(totalesLocalesGuardados).length > 0){
-        totalesPorDia = {...totalesLocalesGuardados};
-        actualizarVistaTotalesPorDia();
-        actualizarVistaHistorial(unicas);
-    } else procesarFacturas(unicas);
+    const unicas = Array.from(
+        new Map(
+            todas.map(f => [
+                `${f.fecha||''}-${f.hora||''}-${f.total_general||0}-${JSON.stringify(f.detalles||[])}`, 
+                f
+            ])
+        ).values()
+    );
+    
+    procesarFacturas(unicas);
+}
+
+function procesarFacturas(facturas){
+    // ✅ EMPIEZA LIMPIO CADA VEZ: YA NO SE BLOQUEA AL BORRAR
+    totalesPorDia = {};
+    
+    // ✅ SUMA TODAS LAS FACTURAS CORRECTAMENTE
+    facturas.forEach(f => {
+        const fecha = f.fecha;
+        if(!fecha) return;
+        if(!totalesPorDia[fecha]) totalesPorDia[fecha] = {};
+        if(!f.detalles || !Array.isArray(f.detalles)) return;
+        
+        f.detalles.forEach(item => {
+            if(!item.nombre) return;
+            if(!totalesPorDia[fecha][item.nombre]) {
+                totalesPorDia[fecha][item.nombre] = {
+                    cantidadTotal: 0, 
+                    unidad: item.unidad || 'Libra', 
+                    montoTotal: 0
+                };
+            }
+            totalesPorDia[fecha][item.nombre].cantidadTotal += Number(item.cantidad || 0);
+            totalesPorDia[fecha][item.nombre].montoTotal += Number(item.total || 0);
+        });
+    });
+
+    totalesLocalesGuardados = {...totalesPorDia};
+    localStorage.setItem('totalesLocales', JSON.stringify(totalesLocalesGuardados));
+    actualizarVistaTotalesPorDia();
+    actualizarVistaHistorial(facturas);
 }
 
 function actualizarVistaHistorial(facturas){
@@ -504,26 +550,6 @@ function actualizarVistaHistorial(facturas){
                 </table>
             </div>
         </div>`).join('');
-}
-
-function procesarFacturas(facturas){
-    totalesPorDia = {};
-    facturas.forEach(f => {
-        const fecha = f.fecha;
-        if(!fecha) return;
-        if(!totalesPorDia[fecha]) totalesPorDia[fecha] = {};
-        if(!f.detalles || !Array.isArray(f.detalles)) return;
-        f.detalles.forEach(item => {
-            if(!item.nombre) return;
-            if(!totalesPorDia[fecha][item.nombre]) totalesPorDia[fecha][item.nombre] = {cantidadTotal:0, unidad:item.unidad||'Libra', montoTotal:0};
-            totalesPorDia[fecha][item.nombre].cantidadTotal += Number(item.cantidad||0);
-            totalesPorDia[fecha][item.nombre].montoTotal += Number(item.total||0);
-        });
-    });
-    totalesLocalesGuardados = {...totalesPorDia};
-    localStorage.setItem('totalesLocales', JSON.stringify(totalesLocalesGuardados));
-    actualizarVistaTotalesPorDia();
-    actualizarVistaHistorial(facturas);
 }
 
 function alternarFecha(el){
