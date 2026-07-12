@@ -41,6 +41,8 @@
         }
         .btn-cliente:hover { background-color: #388e3c; }
         .btn-detallada:hover { background-color: #1565c0; }
+        .btn-ver-historial { background-color: #795548; width: auto; }
+        .btn-ver-historial:hover { background-color: #5d4037; }
         .table-wrap { 
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch !important;
@@ -73,6 +75,7 @@
         .flecha { transition: transform 0.3s; }
         .contenido-fechas { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 10px; }
         .contenido-fechas.abierto { max-height: 2000px; padding: 10px; }
+        .item-oculto { display: none !important; }
         #ventanaFactura { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center; padding: 8px; }
         .caja-factura { background: white; width: 100%; max-width: 500px; padding: 20px; border-radius: 10px; position: relative; max-height: 95vh; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .btn-cerrar { position: absolute; top: 6px; right: 10px; font-size: 24px; border: none; background: none; cursor: pointer; color: #666; font-weight: 400; }
@@ -182,9 +185,9 @@
         <div class="buscador">
             <input type="text" id="fechaBusqueda" placeholder="Buscar por fecha: dd/mm/aaaa">
             <button class="btn-buscar" onclick="buscarPorFecha()">🔍 Buscar</button>
-            <button class="btn-ver-todos" onclick="verTodosLosDias()">📋 Ver Todos</button>
+            <button class="btn-ver-todos" id="btnVerTodosDias" onclick="alternarVerTodosDias()">📋 Ver Todos los Días</button>
         </div>
-        <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Elige ver por días o el total sumado</p>
+        <p style="text-align:center; font-size:11px; color:#555; margin-bottom:6px;">Empieza mostrando solo el día de hoy</p>
         <div id="listaTotalesPorDia">
             <p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>
         </div>
@@ -192,6 +195,9 @@
 
     <div class="section historial">
         <h2>📋 Historial de Compras</h2>
+        <div style="margin-bottom:8px;">
+            <button class="btn-ver-historial" id="btnVerHistorialCompleto" onclick="alternarVerHistorial()">📋 Ver Historial Completo</button>
+        </div>
         <div id="listaHistorial">
             <p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas</p>
         </div>
@@ -225,6 +231,9 @@ let vistaAgrupada = false;
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 let facturasLocales = JSON.parse(localStorage.getItem('facturasLocales')) || [];
 let sincronizando = false;
+let verTodosLosDiasActivo = false;
+let verHistorialCompletoActivo = false;
+let fechaHoy = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' });
 
 document.addEventListener('DOMContentLoaded', async () => {
     supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
@@ -369,7 +378,7 @@ function actualizarCarrito(){
 async function generarFacturas(){
     if(carrito.length === 0) return alert('Agrega materiales primero');
     const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
-    const fecha = new Date().toLocaleDateString('es-EC');
+    const fecha = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' });
     const ahora = new Date();
     const hora = `${ahora.getHours().toString().padStart(2,'0')}:${ahora.getMinutes().toString().padStart(2,'0')}`;
     const creado_el = new Date().toISOString();
@@ -480,7 +489,22 @@ function reiniciarMaterialNuevoPeriodo(nombreMaterial){
     alert("✅ Reiniciado correctamente");
 }
 
-// ========== HISTORIAL Y TOTALES (SIN DUPLICADOS NI BLOQUEOS) ==========
+// ========== FUNCIONES DE VISTA ==========
+function alternarVerTodosDias(){
+    verTodosLosDiasActivo = !verTodosLosDiasActivo;
+    const btn = document.getElementById('btnVerTodosDias');
+    btn.textContent = verTodosLosDiasActivo ? '📋 Ver Solo Hoy' : '📋 Ver Todos los Días';
+    actualizarVistaTotalesPorDia();
+}
+
+function alternarVerHistorial(){
+    verHistorialCompletoActivo = !verHistorialCompletoActivo;
+    const btn = document.getElementById('btnVerHistorialCompleto');
+    btn.textContent = verHistorialCompletoActivo ? '📋 Ver Solo Hoy' : '📋 Ver Historial Completo';
+    actualizarVistaHistorial();
+}
+
+// ========== HISTORIAL Y TOTALES ==========
 async function cargarHistorialYTotales(){
     let facturasNube = [];
     try { 
@@ -503,10 +527,8 @@ async function cargarHistorialYTotales(){
 }
 
 function procesarFacturas(facturas){
-    // ✅ EMPIEZA LIMPIO CADA VEZ: YA NO SE BLOQUEA AL BORRAR
     totalesPorDia = {};
     
-    // ✅ SUMA TODAS LAS FACTURAS CORRECTAMENTE
     facturas.forEach(f => {
         const fecha = f.fecha;
         if(!fecha) return;
@@ -536,17 +558,26 @@ function procesarFacturas(facturas){
 function actualizarVistaHistorial(facturas){
     const listaHistorial = document.getElementById('listaHistorial');
     if(facturas.length === 0){ listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas aún</p>`; return; }
+    
     const agrupado = {};
     facturas.forEach(f => { if(!agrupado[f.fecha]) agrupado[f.fecha] = []; agrupado[f.fecha].push(f); });
-    listaHistorial.innerHTML = Object.entries(agrupado).map(([fecha, arr]) => `
-        <div class="item-fecha">
+    
+    // ✅ Ordenamos fechas de más nueva a más vieja
+    const fechasOrdenadas = Object.keys(agrupado).sort((a, b) => {
+        const [dA, mA, yA] = a.split('/').map(Number);
+        const [dB, mB, yB] = b.split('/').map(Number);
+        return new Date(yB, mB-1, dB) - new Date(yA, mA-1, dA);
+    });
+
+    listaHistorial.innerHTML = fechasOrdenadas.map(fecha => `
+        <div class="item-fecha ${!verHistorialCompletoActivo && fecha !== fechaHoy ? 'item-oculto' : ''}" data-fecha="${fecha}">
             <div class="titulo-fecha" onclick="alternarFecha(this)">
-                <span>📅 ${fecha}</span><span class="flecha">▼</span>
+                <span>📅 ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span><span class="flecha">▼</span>
             </div>
             <div class="contenido-fechas">
                 <table class="tabla-resumen">
                     <tr><th>Hora</th><th>Total</th><th>Cliente</th><th>Detallada</th></tr>
-                    ${arr.map(f => `<tr><td>${f.hora||'Sin hora'}</td><td>$${Number(f.total_general||0).toFixed(2)}</td><td><button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"cliente")'>Ver</button></td><td><button class="btn-detallada" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td></tr>`).join('')}
+                    ${agrupado[fecha].map(f => `<tr><td>${f.hora||'Sin hora'}</td><td>$${Number(f.total_general||0).toFixed(2)}</td><td><button class="btn-cliente" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"cliente")'>Ver</button></td><td><button class="btn-detallada" onclick='verFacturaGuardada(${JSON.stringify(f).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td></tr>`).join('')}
                 </table>
             </div>
         </div>`).join('');
@@ -577,23 +608,31 @@ function verFacturaGuardada(f,t){
 
 function actualizarVistaTotalesPorDia(){
     const lista = document.getElementById('listaTotalesPorDia');
-    const fechas = Object.keys(totalesPorDia).sort().reverse();
+    const fechas = Object.keys(totalesPorDia).sort((a, b) => {
+        const [dA, mA, yA] = a.split('/').map(Number);
+        const [dB, mB, yB] = b.split('/').map(Number);
+        return new Date(yB, mB-1, dB) - new Date(yA, mA-1, dA);
+    });
+    
     if(fechas.length === 0){ lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>`; return; }
+    
     let html = `
     <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
         <button style="flex:1; min-width:120px; padding:8px;" onclick="cambiarVistaTotales(false)">📅 Ver por Días</button>
         <button style="flex:1; min-width:120px; padding:8px;" onclick="cambiarVistaTotales(true)">📊 Ver Total Acumulado</button>
     </div>`;
+    
     if(!vistaAgrupada){
         let totalG = 0;
         fechas.forEach(fecha => {
+            if(!verTodosLosDiasActivo && fecha !== fechaHoy) return;
             const mats = Object.entries(totalesPorDia[fecha]);
             const totalD = Object.values(totalesPorDia[fecha]).reduce((s,d)=>s+d.montoTotal,0);
             totalG += totalD;
             html += `
             <div class="item-fecha">
                 <div class="titulo-fecha" onclick="alternarFecha(this)">
-                    <span>📅 Día: ${fecha}</span><span class="flecha">▼</span>
+                    <span>📅 Día: ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span><span class="flecha">▼</span>
                 </div>
                 <div class="contenido-fechas">
                     <table class="tabla-resumen">
@@ -608,6 +647,7 @@ function actualizarVistaTotalesPorDia(){
     } else {
         const acu = {}; let totalG =0;
         fechas.forEach(f => {
+            if(!verTodosLosDiasActivo && f !== fechaHoy) return;
             Object.entries(totalesPorDia[f]).forEach(([n,d])=>{
                 if(!acu[n]) acu[n] = {cantidad:0, unidad:d.unidad, monto:0};
                 acu[n].cantidad += d.cantidadTotal; acu[n].monto += d.montoTotal; totalG += d.montoTotal;
@@ -616,7 +656,7 @@ function actualizarVistaTotalesPorDia(){
         html += `
         <div class="item-fecha" style="border-color:#42a5f5;">
             <div class="titulo-fecha" style="background:#e3f2fd; color:#0d47a1;">
-                <span>📊 TOTALES ACUMULADOS</span>
+                <span>📊 TOTALES ACUMULADOS ${!verTodosLosDiasActivo ? '(Solo Hoy)' : '(Todos los días)'}</span>
             </div>
             <div class="contenido-fechas abierto">
                 <table class="tabla-resumen">
