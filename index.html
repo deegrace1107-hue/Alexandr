@@ -41,7 +41,7 @@
         }
         .btn-cliente:hover { background-color: #388e3c; }
         .btn-detallada:hover { background-color: #1565c0; }
-        .btn-ver-historial { background-color: #795548; width: auto; }
+        .btn-ver-historial { background-color: #795548; width: auto; color: white; font-weight: bold; }
         .btn-ver-historial:hover { background-color: #5d4037; }
         .table-wrap { 
             overflow-x: auto !important;
@@ -234,6 +234,7 @@ let sincronizando = false;
 let verTodosLosDiasActivo = false;
 let verHistorialCompletoActivo = false;
 let fechaHoy = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' });
+let todasLasFacturas = []; // Guardamos todas las facturas aquí
 
 document.addEventListener('DOMContentLoaded', async () => {
     supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
@@ -274,6 +275,8 @@ async function sincronizarPendientes(){
         datosPendientes = quedanPendientes;
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
         if(subidos > 0) alert(`✅ Se subieron ${subidos} compras a tu base!`);
+        // Volvemos a cargar todas las facturas después de sincronizar
+        await cargarHistorialYTotales();
     } finally { sincronizando = false; }
 }
 
@@ -501,7 +504,8 @@ function alternarVerHistorial(){
     verHistorialCompletoActivo = !verHistorialCompletoActivo;
     const btn = document.getElementById('btnVerHistorialCompleto');
     btn.textContent = verHistorialCompletoActivo ? '📋 Ver Solo Hoy' : '📋 Ver Historial Completo';
-    actualizarVistaHistorial();
+    // Usamos todas las facturas que cargamos
+    actualizarVistaHistorial(todasLasFacturas);
 }
 
 // ========== HISTORIAL Y TOTALES ==========
@@ -514,7 +518,7 @@ async function cargarHistorialYTotales(){
     
     // ✅ JUNTA Y ELIMINA DUPLICADAS DE FORMA SEGURA
     const todas = [...facturasNube, ...facturasLocales];
-    const unicas = Array.from(
+    todasLasFacturas = Array.from(
         new Map(
             todas.map(f => [
                 `${f.fecha||''}-${f.hora||''}-${f.total_general||0}-${JSON.stringify(f.detalles||[])}`, 
@@ -523,7 +527,7 @@ async function cargarHistorialYTotales(){
         ).values()
     );
     
-    procesarFacturas(unicas);
+    procesarFacturas(todasLasFacturas);
 }
 
 function procesarFacturas(facturas){
@@ -593,7 +597,7 @@ function cambiarVistaTotales(m){ vistaAgrupada = m; actualizarVistaTotalesPorDia
 function buscarPorFecha(){
     const busqueda = document.getElementById('fechaBusqueda').value.trim();
     if(!busqueda) return cargarHistorialYTotales();
-    const filtradas = facturasLocales.filter(f => f.fecha && f.fecha.includes(busqueda));
+    const filtradas = todasLasFacturas.filter(f => f.fecha && f.fecha.includes(busqueda));
     actualizarVistaHistorial(filtradas);
 }
 function verTodosLosDias(){ document.getElementById('fechaBusqueda').value = ''; cargarHistorialYTotales(); }
