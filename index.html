@@ -249,15 +249,20 @@ function normalizarHora(hora) {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
-        actualizarEstadoConexion(navigator.onLine);
-        await cargarMateriales();
-        await cargarHistorialYTotales();
-        await sincronizarPendientes();
     } catch (error) {
-        console.error("Error al iniciar la app:", error);
-        alert("⚠️ Cargando datos locales...");
-        await cargarMateriales();
-        await cargarHistorialYTotales();
+        console.error("Error al conectar con nube, se usan solo datos locales:", error);
+    }
+    actualizarEstadoConexion(navigator.onLine);
+    // Primero cargamos datos locales para que aparezcan de inmediato
+    await cargarMateriales(true);
+    await cargarHistorialYTotales(true);
+    // Luego intentamos sincronizar con la nube en segundo plano
+    if(navigator.onLine) {
+        setTimeout(async () => {
+            await cargarMateriales(false);
+            await cargarHistorialYTotales(false);
+            await sincronizarPendientes();
+        }, 500);
     }
 });
 
@@ -268,14 +273,14 @@ function actualizarEstadoConexion(conectado) {
         aviso.style.background = "#e8f5e9";
         aviso.style.color = "#1b5e20";
     } else {
-        aviso.innerHTML = "⚠️ SIN INTERNET: Guardado seguro en celular, se subirá solo";
+        aviso.innerHTML = "⚠️ SIN INTERNET: Usando datos guardados en tu celular";
         aviso.style.background = "#fff3cd";
         aviso.style.color = "#856404";
     }
 }
 
 async function sincronizarPendientes(){
-    if(sincronizando || datosPendientes.length === 0 || !navigator.onLine) return;
+    if(sincronizando || datosPendientes.length === 0 || !navigator.onLine || !supabaseCliente) return;
     sincronizando = true;
     let subidos = 0;
     try {
@@ -283,7 +288,6 @@ async function sincronizarPendientes(){
         for(const item of datosPendientes){
             try {
                 if(item.tipo === 'factura'){
-                    // Normalizamos la hora antes de comprobar duplicado
                     item.datos.hora = normalizarHora(item.datos.hora);
                     const claveUnica = `${item.datos.fecha||''}-${item.datos.hora||''}-${item.datos.total_general||0}-${JSON.stringify(item.datos.detalles||[])}`;
                     const { data: existentes } = await supabaseCliente.from('facturas').select('*').eq('fecha', item.datos.fecha);
@@ -302,7 +306,7 @@ async function sincronizarPendientes(){
         datosPendientes = quedanPendientes;
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
         if(subidos > 0) alert(`✅ Se subieron ${subidos} compras a tu base!`);
-        await cargarHistorialYTotales();
+        await cargarHistorialYTotales(false);
     } finally { sincronizando = false; }
 }
 
@@ -310,12 +314,14 @@ window.addEventListener('online', () => { actualizarEstadoConexion(true); sincro
 window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
 // ========== MATERIALES ==========
-async function cargarMateriales(){
+async function cargarMateriales(soloLocales = false){
     let datosNube = [];
-    try { 
-        const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true}); 
-        if(!error && data) datosNube = data; 
-    } catch (e) { console.log("No se pudo cargar materiales de la nube, usando locales"); }
+    if(!soloLocales && supabaseCliente && navigator.onLine) {
+        try { 
+            const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true}); 
+            if(!error && data) datosNube = data; 
+        } catch (e) { console.log("No se pudo cargar materiales de la nube"); }
+    }
     
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     const mapa = new Map();
@@ -341,24 +347,23 @@ async function guardarMaterial(){
     lista.push(nuevo);
     localStorage.setItem('materialesLocales', JSON.stringify(lista));
     
-    if(navigator.onLine) {
+    let guardadoNube = false;
+    if(supabaseCliente && navigator.onLine) {
         try {
             const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
-            alert(!error ? '✅ Guardado en nube' : '⚠️ Guardado en celular');
-        } catch {
-            datosPendientes.push({tipo:'material', datos:nuevo});
-            localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-            alert('⚠️ Guardado en celular');
-        }
-    } else {
+            if(!error) guardadoNube = true;
+        } catch {}
+    }
+    
+    if(!guardadoNube) {
         datosPendientes.push({tipo:'material', datos:nuevo});
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-        alert('⚠️ Guardado en celular, se subirá luego');
-    }
+        alert('✅ Guardado en celular, se subirá al tener internet');
+    } else alert('✅ Guardado en nube y celular');
     
     document.getElementById('nombreMaterial').value = '';
     document.getElementById('precioUnitario').value = '';
-    cargarMateriales();
+    cargarMateriales(true);
 }
 
 function actualizarTablaMateriales(lista){
@@ -385,16 +390,16 @@ async function eliminarMaterial(id){
         if(indice >=0 && indice < l.length) {
             l.splice(indice,1);
             localStorage.setItem('materialesLocales', JSON.stringify(l));
-            cargarMateriales();
+            cargarMateriales(true);
         }
         return;
     }
-    try { 
-        await supabaseCliente.from('materiales').delete().eq('id', id); 
-        cargarMateriales(); 
-    } catch { 
-        alert('Se eliminará cuando haya internet'); 
-    }
+    if(supabaseCliente && navigator.onLine) {
+        try { 
+            await supabaseCliente.from('materiales').delete().eq('id', id); 
+        } catch { alert('Se eliminará cuando haya internet'); }
+    } else alert('Se eliminará cuando haya internet');
+    cargarMateriales(true);
 }
 
 function actualizarSelectMateriales(lista){
@@ -419,7 +424,7 @@ async function agregarAlCarrito(){
     const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     let mat = locales.find(m => m && m.nombre === nombre);
     
-    if(!mat && navigator.onLine) {
+    if(!mat && supabaseCliente && navigator.onLine) {
         try { 
             const {data} = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).limit(1).single(); 
             mat = data; 
@@ -468,14 +473,12 @@ async function generarFacturas(){
     const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
     const fecha = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' });
     const ahora = new Date();
-    // 🆕 Siempre guardamos la hora en formato HH:MM sin segundos
     const hora = normalizarHora(ahora.toLocaleTimeString('es-EC', {hour12: false}));
     const creado_el = new Date().toISOString();
     facturaActual = { fecha, hora, total_general: totalGeneral, detalles: JSON.parse(JSON.stringify(carrito)), creado_el };
 
     const claveUnica = `${fecha}-${hora}-${totalGeneral}-${JSON.stringify(facturaActual.detalles)}`;
 
-    // Revisar duplicado local
     const existeLocal = facturasLocales.some(f => {
         if(!f) return false;
         f.hora = normalizarHora(f.hora);
@@ -487,7 +490,7 @@ async function generarFacturas(){
     }
 
     let subidoBien = false;
-    if(navigator.onLine) {
+    if(supabaseCliente && navigator.onLine) {
         try {
             const { data: existentes } = await supabaseCliente.from('facturas').select('*').eq('fecha', fecha);
             const existeNube = existentes?.some(f => {
@@ -512,8 +515,8 @@ async function generarFacturas(){
             datosPendientes.push({tipo:'factura', datos:facturaActual});
             localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
         }
-        alert("✅ Venta guardada SEGURA en tu celular. Se subirá automáticamente cuando vuelvas a tener internet.");
-    } else alert("✅ Venta guardada y subida a tu base de datos!");
+        alert("✅ Venta guardada en tu celular, se subirá al tener internet");
+    } else alert("✅ Venta guardada y subida a la nube");
 
     mostrarCliente();
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
@@ -521,7 +524,7 @@ async function generarFacturas(){
     document.getElementById("ventanaFactura").style.display = "flex";
     carrito = [];
     actualizarCarrito();
-    await cargarHistorialYTotales();
+    await cargarHistorialYTotales(true);
     guardandoFactura = false;
 }
 
@@ -617,16 +620,15 @@ function alternarVerHistorial(){
 }
 
 // ========== HISTORIAL Y TOTALES ==========
-async function cargarHistorialYTotales(){
+async function cargarHistorialYTotales(soloLocales = false){
     let facturasNube = [];
-    if(navigator.onLine) {
+    if(!soloLocales && supabaseCliente && navigator.onLine) {
         try { 
             const { data, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false}); 
             if(!error && data) facturasNube = data; 
         } catch (e) { console.log("No se pudo cargar facturas de la nube"); }
     }
     
-    // 🆕 Normalizamos todas las horas antes de juntar y quitar duplicados
     const todasLocales = (facturasLocales || []).filter(f => f).map(f => {
         f.hora = normalizarHora(f.hora);
         return f;
@@ -719,11 +721,11 @@ function alternarFecha(el){
 function cambiarVistaTotales(m){ vistaAgrupada = m; actualizarVistaTotalesPorDia(); }
 function buscarPorFecha(){
     const busqueda = document.getElementById('fechaBusqueda').value.trim();
-    if(!busqueda) return cargarHistorialYTotales();
+    if(!busqueda) return cargarHistorialYTotales(true);
     const filtradas = todasLasFacturas.filter(f => f && f.fecha && f.fecha.includes(busqueda));
     actualizarVistaHistorial(filtradas);
 }
-function verTodosLosDias(){ document.getElementById('fechaBusqueda').value = ''; cargarHistorialYTotales(); }
+function verTodosLosDias(){ document.getElementById('fechaBusqueda').value = ''; cargarHistorialYTotales(true); }
 
 function verFacturaGuardada(f,t){
     facturaActual = f;
@@ -765,4 +767,61 @@ function actualizarVistaTotalesPorDia(){
                 <div class="titulo-fecha" onclick="alternarFecha(this)">
                     <span>📅 Día: ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span><span class="flecha">▼</span>
                 </div>
-                <div class="contenido-f
+                <div class="contenido-fechas">
+                    <table class="tabla-resumen">
+                        <tr><th>Material</th><th>Peso Total</th><th>Unidad</th><th>Total $</th><th>
+                        <th>Acción</th></tr>
+${mats.map(([nombre, datos]) => `
+<tr>
+    <td>${nombre}</td>
+    <td>${datos.cantidadTotal.toFixed(1)}</td>
+    <td>${datos.unidad}</td>
+    <td>$${datos.montoTotal.toFixed(2)}</td>
+    <td>
+        <button class="btn-reiniciar-individual" onclick="eliminarTotalMaterialPorDia('${fecha}','${nombre}')">Eliminar</button>
+    </td>
+</tr>`).join('')}
+<tr class="fila-total-dia">
+    <td colspan="3">Total del día</td>
+    <td colspan="2">$${totalD.toFixed(2)}</td>
+</tr>
+</table>
+</div>
+</div>`;
+});
+html += `
+<div class="fila-total-general" style="padding:10px; margin-top:10px;">
+    <strong>TOTAL GENERAL: $${totalG.toFixed(2)}</strong>
+</div>`;
+} else {
+let acumulado = {};
+Object.values(totalesPorDia).forEach(dia => {
+    Object.entries(dia).forEach(([nombre, datos]) => {
+        if(!acumulado[nombre]) acumulado[nombre] = {cantidad:0, monto:0, unidad:datos.unidad};
+        acumulado[nombre].cantidad += datos.cantidadTotal;
+        acumulado[nombre].monto += datos.montoTotal;
+    });
+});
+const totalAcum = Object.values(acumulado).reduce((s,d)=>s+d.monto,0);
+html += `
+<table class="tabla-resumen">
+    <tr><th>Material</th><th>Peso Total</th><th>Unidad</th><th>Total Acumulado $</th><th>Reiniciar</th></tr>
+    ${Object.entries(acumulado).map(([n,d])=>`
+    <tr>
+        <td>${n}</td>
+        <td>${d.cantidad.toFixed(1)}</td>
+        <td>${d.unidad}</td>
+        <td>$${d.monto.toFixed(2)}</td>
+        <td><button class="btn-reiniciar-individual" onclick="reiniciarMaterialNuevoPeriodo('${n}')">Reiniciar</button></td>
+    </tr>`).join('')}
+    <tr class="fila-total-general">
+        <td colspan="3">TOTAL GENERAL</td>
+        <td colspan="2">$${totalAcum.toFixed(2)}</td>
+    </tr>
+</table>`;
+}
+lista.innerHTML = html;
+}
+</script>
+</body>
+</html>
