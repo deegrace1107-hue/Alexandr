@@ -27,20 +27,8 @@
         .btn-ver-todos:hover { background-color: #fb8c00; }
         .btn-quitar { background-color: #ef5350; min-width: auto; padding: 6px 10px; font-size: 12px; }
         .btn-quitar:hover { background-color: #e53935; }
-        .btn-reiniciar-individual { background-color: #ff9800; min-width: auto; padding: 6px 8px; font-size: 12px; }
-        .btn-reiniciar-individual:hover { background-color: #fb8c00; }
-        .btn-danger { background-color: #d32f2f; }
-        .btn-danger:hover { background-color: #c62828; }
-        .btn-cliente, .btn-detallada { 
-            padding: 7px 4px !important;
-            font-size: 13px !important;
-            min-width: 65px !important;
-            margin: 2px !important;
-        }
-        .btn-cliente { background-color: #43a047; }
+        .btn-cliente { background-color: #43a047; padding: 7px 4px; font-size: 13px; min-width: 65px; margin: 2px; }
         .btn-cliente:hover { background-color: #388e3c; }
-        .btn-detallada { background-color: #0288d1; }
-        .btn-detallada:hover { background-color: #0277bd; }
         .btn-ver-historial { background-color: #795548; color: #fff; font-weight: bold; border: none; padding: 10px 18px; border-radius: 8px; font-size: 15px; }
         .btn-ver-historial:hover { background-color: #5d4037; }
         .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; margin: 8px 0; border-radius: 6px; border: 1px solid #e0e0e0; }
@@ -48,28 +36,20 @@
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { border: 1px solid #e0e0e0; padding: 7px 5px; text-align: center; vertical-align: middle; }
         th { background-color: #e8f5e9; color: #1b5e20; font-weight: 600; }
-        .fila-total-dia { background-color: #e8f5e9; font-weight: 600; color: #1b5e20; font-size: 14px; }
         .fila-total-general { background-color: #e3f2fd; font-weight: 700; color: #0d47a1; font-size: 15px; padding: 12px; border-radius: 6px; margin-top: 10px; }
         .total { text-align: right; font-size: 16px; font-weight: 700; color: #1b5e20; margin: 10px 0; padding-right: 8px; }
-        .resumen { background-color: #f1f8e9; border-color: #9ccc65; }
-        .historial { background-color: #fff8e1; border-color: #ffcc80; }
-        .totales-generales { background-color: #e3f2fd; border-color: #90caf9; margin-top: 16px; }
         .aviso { background: #e3f2fd; padding: 8px; border-radius: 6px; margin-bottom: 10px; text-align: center; color: #0d47a1; font-size: 13px; font-weight: 500; }
-        .aviso-sin-conexion { background: #fff3e0; border: 1px solid #ffcc80; color: #e65100; padding: 7px; border-radius: 6px; margin: 6px 0; font-size: 12px; text-align: center; }
         .tabla-resumen { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
         .tabla-resumen th, .tabla-resumen td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: center; }
         .tabla-resumen th { background: #e8f5e9; font-weight: 600; }
         .item-fecha { border: 1px solid #ffcc80; border-radius: 8px; margin-bottom: 10px; background: #fff; overflow: hidden; }
-        .titulo-fecha { padding: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #e65100; background: #fff3e0; transition: background 0.2s; }
-        .titulo-fecha:hover { background: #ffe0b2; }
-        .flecha { transition: transform 0.3s ease; font-size: 16px; }
-        .contenido-fechas { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 12px; }
+        .titulo-fecha { padding: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #e65100; background: #fff3e0; }
+        .flecha { font-size: 16px; }
+        .contenido-fechas { max-height: 0; overflow: hidden; transition: max-height 0.3s; padding: 0 12px; }
         .contenido-fechas.abierto { max-height: 5000px; padding: 12px; }
-        .item-oculto { display: none !important; }
         #ventanaFactura { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: flex-start; padding: 16px; overflow-y: auto; }
-        .caja-factura { background: white; width: 100%; max-width: 520px; padding: 24px; border-radius: 10px; position: relative; margin: 20px auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .caja-factura { background: white; width: 100%; max-width: 520px; padding: 24px; border-radius: 10px; position: relative; margin: 20px auto; }
         .btn-cerrar { position: absolute; top: 12px; right: 12px; font-size: 26px; border: none; background: none; cursor: pointer; color: #666; padding: 0; width: auto; }
-        .btn-cerrar:hover { color: #000; background: none; }
         .logo-factura { display: block; max-width: 140px; margin: 0 auto 16px; }
         .tabla-factura { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14px; }
         .tabla-factura th, .tabla-factura td { border: 1px solid #424242; padding: 9px 6px; text-align: right; }
@@ -107,7 +87,7 @@
 <div class="container">
     <img src="logo.png" alt="Logo Recicladora" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso" id="estadoConexion">✅ Cargando datos...</div>
+    <div class="aviso" id="estadoConexion">✅ Listo para usar</div>
 
     <div class="section">
         <h2>⚙️ Configurar Materiales</h2>
@@ -160,7 +140,6 @@
 
     <div class="section totales-generales">
         <h2>📊 Totales y Reportes</h2>
-        <p style="text-align:center; font-size:12px; color:#555; margin-bottom:10px;">Por defecto muestra solo el día de hoy</p>
         <div class="buscador">
             <input type="text" id="fechaBusqueda" placeholder="Buscar por fecha: dd/mm/aaaa">
             <button class="btn-buscar" onclick="buscarPorFecha()">🔍 Buscar</button>
@@ -186,7 +165,7 @@
         <div id="datosFactura"></div>
         <div class="botones-factura">
             <button onclick="window.print()">🖨️ Imprimir Recibo</button>
-            <button class="btn-danger" onclick="cerrarVentanaFactura()">Cerrar</button>
+            <button class="btn-quitar" onclick="cerrarVentanaFactura()">Cerrar</button>
         </div>
     </div>
 </div>
@@ -195,7 +174,7 @@
 // === CONFIGURACIÓN DE SUPABASE ===
 const SUPABASE_URL = "https://eqvyxdecgoroltpjuips.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY) || null;
 
 // === VARIABLES GLOBALES ===
 let carrito = [];
@@ -217,23 +196,15 @@ function generarClaveUnica(compra) {
     return `${compra.fecha||''}-${normalizarHora(compra.hora||'')}-${compra.total||0}-${JSON.stringify(compra.detalles||[])}`;
 }
 
-// === INICIO DE LA APLICACIÓN (CARGA PRIORITARIA DE LOCALES) ===
-document.addEventListener('DOMContentLoaded', async () => {
-    // ✅ PRIMERO CARGAMOS TUS DATOS GUARDADOS EN EL CELULAR (NUNCA FALLA)
+// === INICIO: CARGA INMEDIATA DE TUS DATOS ===
+document.addEventListener('DOMContentLoaded', () => {
     cargarMaterialesLocales();
     cargarComprasLocales();
-    document.getElementById('estadoConexion').innerHTML = "✅ Datos cargados | Sincronizando con nube...";
-    
-    // ✅ LUEGO SINCRONIZAMOS CON LA NUBE EN SEGUNDO PLANO
-    setTimeout(async () => {
-        await sincronizarDesdeNube();
-        document.getElementById('estadoConexion').innerHTML = navigator.onLine 
-            ? "✅ Conectado | Datos sincronizados" 
-            : "⚠️ Sin internet | Usando datos locales";
-    }, 800);
+    document.getElementById('estadoConexion').innerHTML = "✅ Listo para usar";
+    if (supabase) sincronizarEnSegundoPlano();
 });
 
-// === CARGA OBLIGATORIA DE DATOS LOCALES ===
+// === CARGA DE DATOS LOCALES (SIEMPRE FUNCIONA) ===
 function cargarMaterialesLocales() {
     const guardados = localStorage.getItem('materialesLocal');
     listaMateriales = guardados ? JSON.parse(guardados) : [];
@@ -248,33 +219,27 @@ function cargarComprasLocales() {
     dibujarTotales();
 }
 
-// === SINCRONIZACIÓN INTELIGENTE DESDE LA NUBE ===
-async function sincronizarDesdeNube() {
-    // 1. SINCRONIZAR MATERIALES
+// === SINCRONIZACIÓN SIN DETENER NADA ===
+async function sincronizarEnSegundoPlano() {
     try {
+        // Sincronizar materiales
         const { data: matNube, error: errMat } = await supabase.from('materiales').select('*').order('nombre', {ascending:true});
-        if (!errMat && matNube?.length > 0) {
+        if (!errMat && matNube) {
             const mapa = new Map();
             matNube.forEach(m => mapa.set(m.nombre.toLowerCase(), m));
-            listaMateriales.forEach(m => {
-                if (!mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m);
-            });
+            listaMateriales.forEach(m => { if (!mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m); });
             listaMateriales = Array.from(mapa.values());
             localStorage.setItem('materialesLocal', JSON.stringify(listaMateriales));
             dibujarTablaMateriales();
             actualizarSelectMateriales();
         }
-    } catch (err) {
-        console.log("Sin sincronización de materiales:", err);
-    }
 
-    // 2. SINCRONIZAR COMPRAS SIN DUPLICADOS
-    try {
+        // Sincronizar compras SIN DUPLICADOS
         const { data: comprasNube, error: errComp } = await supabase.from('compras').select('*').order('creado_en', {ascending:false});
-        if (!errComp && comprasNube?.length > 0) {
+        if (!errComp && comprasNube) {
             const clavesNube = new Set(comprasNube.map(c => generarClaveUnica(c)));
-            const comprasNuevas = listaCompras.filter(c => !clavesNube.has(generarClaveUnica(c)));
-            const todas = [...comprasNube, ...comprasNuevas];
+            const comprasValidas = listaCompras.filter(c => clavesNube.has(generarClaveUnica(c)));
+            const todas = [...comprasNube, ...comprasValidas];
             const mapaFinal = new Map();
             todas.forEach(c => mapaFinal.set(generarClaveUnica(c), c));
             listaCompras = Array.from(mapaFinal.values());
@@ -282,8 +247,11 @@ async function sincronizarDesdeNube() {
             dibujarHistorial();
             dibujarTotales();
         }
+
+        document.getElementById('estadoConexion').innerHTML = "✅ Conectado y sincronizado";
     } catch (err) {
-        console.log("Sin sincronización de compras:", err);
+        console.log("Sincronización en segundo plano:", err);
+        document.getElementById('estadoConexion').innerHTML = "⚠️ Usando datos del celular";
     }
 }
 
@@ -293,24 +261,17 @@ async function guardarMaterial() {
     const unidad = document.getElementById('unidadMedida').value;
     const precio = parseFloat(document.getElementById('precioUnitario').value);
     
-    if (!nombre || isNaN(precio) || precio <= 0) {
-        alert('Completa todos los datos correctamente');
-        return;
-    }
-
-    const existe = listaMateriales.find(m => m.nombre.toLowerCase() === nombre.toLowerCase());
-    if (existe) {
-        alert('Este material ya existe');
-        return;
-    }
+    if (!nombre || isNaN(precio) || precio <= 0) { alert('Completa todos los datos'); return; }
+    if (listaMateriales.find(m => m.nombre.toLowerCase() === nombre.toLowerCase())) { alert('Este material ya existe'); return; }
 
     const nuevo = { nombre, unidad, precio_unitario: precio };
     try {
-        const { data, error } = await supabase.from('materiales').insert([nuevo]).select();
-        if (error) throw error;
-        listaMateriales.push(data[0]);
-        alert('✅ Guardado en nube y celular');
-    } catch (err) {
+        if (supabase) {
+            const { data, error } = await supabase.from('materiales').insert([nuevo]).select();
+            if (!error) { listaMateriales.push(data[0]); alert('✅ Guardado en nube'); }
+            else throw new Error("Sin conexión");
+        } else throw new Error("Sin conexión");
+    } catch {
         nuevo.id = Date.now();
         listaMateriales.push(nuevo);
         comprasPendientes.push({tipo:'material', datos:nuevo});
@@ -326,12 +287,8 @@ async function guardarMaterial() {
 }
 
 async function eliminarMaterial(id) {
-    if (!confirm('¿Seguro quieres eliminar este material?')) return;
-    try {
-        await supabase.from('materiales').delete().eq('id', id);
-    } catch (err) {
-        console.log('Eliminación local:', err);
-    }
+    if (!confirm('¿Seguro quieres eliminar?')) return;
+    try { if (supabase) await supabase.from('materiales').delete().eq('id', id); } catch {}
     listaMateriales = listaMateriales.filter(m => m.id !== id);
     localStorage.setItem('materialesLocal', JSON.stringify(listaMateriales));
     dibujarTablaMateriales();
@@ -346,14 +303,13 @@ function dibujarTablaMateriales() {
         return;
     }
     listaMateriales.forEach(m => {
-        const fila = document.createElement('tr');
-        fila.innerHTML = `
-            <td>${m.nombre}</td>
-            <td>${m.unidad}</td>
-            <td>$${m.precio_unitario.toFixed(2)}</td>
-            <td><button class="btn-quitar" onclick="eliminarMaterial(${m.id})">Eliminar</button></td>
-        `;
-        cuerpo.appendChild(fila);
+        cuerpo.innerHTML += `
+            <tr>
+                <td>${m.nombre}</td>
+                <td>${m.unidad}</td>
+                <td>$${m.precio_unitario.toFixed(2)}</td>
+                <td><button class="btn-quitar" onclick="eliminarMaterial(${m.id})">Eliminar</button></td>
+            </tr>`;
     });
 }
 
@@ -361,10 +317,7 @@ function actualizarSelectMateriales() {
     const select = document.getElementById('materialSeleccionado');
     select.innerHTML = '<option value="">Selecciona un material</option>';
     listaMateriales.forEach(m => {
-        const opcion = document.createElement('option');
-        opcion.value = m.id;
-        opcion.textContent = `${m.nombre} - $${m.precio_unitario.toFixed(2)}/${m.unidad}`;
-        select.appendChild(opcion);
+        select.innerHTML += `<option value="${m.id}">${m.nombre} - $${m.precio_unitario.toFixed(2)}/${m.unidad}</option>`;
     });
 }
 
@@ -373,11 +326,7 @@ function agregarAlCarrito() {
     const idMaterial = parseInt(document.getElementById('materialSeleccionado').value);
     const cantidad = parseFloat(document.getElementById('pesoCantidad').value);
     
-    if (!idMaterial || isNaN(cantidad) || cantidad <= 0) {
-        alert('Selecciona un material y una cantidad válida');
-        return;
-    }
-
+    if (!idMaterial || isNaN(cantidad) || cantidad <= 0) { alert('Selecciona material y cantidad válida'); return; }
     const material = listaMateriales.find(m => m.id === idMaterial);
     const subtotal = material.precio_unitario * cantidad;
 
@@ -401,7 +350,7 @@ function dibujarCarrito() {
     let totalGeneral = 0;
 
     if (carrito.length === 0) {
-        contenedor.innerHTML = '<p style="text-align:center; color:#666; padding:10px;">Agrega materiales para ver el resumen</p>';
+        contenedor.innerHTML = '<p style="text-align:center; color:#666; padding:10px;">Agrega materiales</p>';
         totalElemento.textContent = 'Total a Pagar: $0.00';
         return;
     }
@@ -409,20 +358,14 @@ function dibujarCarrito() {
     contenedor.innerHTML = '';
     carrito.forEach(item => {
         totalGeneral += item.subtotal;
-        const fila = document.createElement('div');
-        fila.style.display = 'flex';
-        fila.style.justifyContent = 'space-between';
-        fila.style.alignItems = 'center';
-        fila.style.padding = '6px 0';
-        fila.style.borderBottom = '1px solid #ddd';
-        fila.innerHTML = `
-            <span>${item.material} - ${item.cantidad.toFixed(1)} ${item.unidad}</span>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <span>$${item.subtotal.toFixed(2)}</span>
-                <button class="btn-quitar" style="padding:4px 8px; font-size:12px;" onclick="quitarItemCarrito(${item.id})">×</button>
-            </div>
-        `;
-        contenedor.appendChild(fila);
+        contenedor.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #ddd;">
+                <span>${item.material} - ${item.cantidad.toFixed(1)} ${item.unidad}</span>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <span>$${item.subtotal.toFixed(2)}</span>
+                    <button class="btn-quitar" style="padding:4px 8px; font-size:12px;" onclick="quitarItemCarrito(${item.id})">×</button>
+                </div>
+            </div>`;
     });
 
     totalElemento.textContent = `Total a Pagar: $${totalGeneral.toFixed(2)}`;
@@ -434,10 +377,7 @@ function quitarItemCarrito(id) {
 }
 
 async function finalizarCompra() {
-    if (carrito.length === 0) {
-        alert('Agrega materiales primero');
-        return;
-    }
+    if (carrito.length === 0) { alert('Agrega materiales primero'); return; }
 
     const totalCompra = carrito.reduce((sum, item) => sum + item.subtotal, 0);
     const fecha = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' });
@@ -451,24 +391,21 @@ async function finalizarCompra() {
         creado_en: new Date().toISOString()
     };
 
-    const claveUnica = generarClaveUnica(nuevaCompra);
-    const existeYa = listaCompras.some(c => generarClaveUnica(c) === claveUnica);
-    if (existeYa) {
-        alert('⚠️ Esta compra ya está registrada');
-        return;
-    }
+    const clave = generarClaveUnica(nuevaCompra);
+    if (listaCompras.some(c => generarClaveUnica(c) === clave)) { alert('⚠️ Esta compra ya existe'); return; }
 
     try {
-        const { data, error } = await supabase.from('compras').insert([nuevaCompra]).select();
-        if (error) throw error;
-        listaCompras.unshift(data[0]);
-        alert('✅ Compra guardada correctamente');
-    } catch (err) {
+        if (supabase) {
+            const { data, error } = await supabase.from('compras').insert([nuevaCompra]).select();
+            if (!error) { listaCompras.unshift(data[0]); alert('✅ Compra guardada'); }
+            else throw new Error("Sin conexión");
+        } else throw new Error("Sin conexión");
+    } catch {
         nuevaCompra.id = Date.now();
         listaCompras.unshift(nuevaCompra);
         comprasPendientes.push({tipo:'compra', datos:nuevaCompra});
         localStorage.setItem('comprasPendientes', JSON.stringify(comprasPendientes));
-        alert('✅ Guardada en celular, se sincronizará al tener internet');
+        alert('✅ Guardada en celular, se sincronizará luego');
     }
 
     localStorage.setItem('comprasGuardadas', JSON.stringify(listaCompras));
@@ -479,37 +416,27 @@ async function finalizarCompra() {
     dibujarTotales();
 }
 
-// === RECIBO Y VENTANA MODAL ===
+// === RECIBOS ===
 function mostrarRecibo(compra) {
-    const contenedor = document.getElementById('datosFactura');
-    let filasDetalles = '';
+    let filas = '';
     compra.detalles.forEach(item => {
-        filasDetalles += `
+        filas += `
             <tr>
                 <td>${item.material}</td>
                 <td>${item.cantidad.toFixed(1)} ${item.unidad}</td>
                 <td>$${item.precio.toFixed(2)}</td>
                 <td>$${item.subtotal.toFixed(2)}</td>
-            </tr>
-        `;
+            </tr>`;
     });
 
-    contenedor.innerHTML = `
+    document.getElementById('datosFactura').innerHTML = `
         <p style="text-align:center; margin-bottom:15px;">Fecha: ${compra.fecha} | Hora: ${compra.hora}</p>
         <table class="tabla-factura">
-            <thead>
-                <tr>
-                    <th>Material</th>
-                    <th>Cantidad</th>
-                    <th>Precio Unit.</th>
-                    <th>Subtotal</th>
-                </tr>
-            </thead>
-            <tbody>${filasDetalles}</tbody>
+            <thead><tr><th>Material</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
+            <tbody>${filas}</tbody>
         </table>
-        <div class="total-final">TOTAL A PAGAR: $${compra.total.toFixed(2)}</div>
-        <p style="text-align:center; margin-top:20px; font-size:12px; color:#666;">¡Gracias por su preferencia!</p>
-    `;
+        <div class="total-final">TOTAL: $${compra.total.toFixed(2)}</div>
+        <p style="text-align:center; margin-top:20px; font-size:12px; color:#666;">Gracias por su preferencia</p>`;
     document.getElementById('ventanaFactura').style.display = 'flex';
 }
 
@@ -517,7 +444,7 @@ function cerrarVentanaFactura() {
     document.getElementById('ventanaFactura').style.display = 'none';
 }
 
-// === VISTAS DE HISTORIAL Y TOTALES ===
+// === VISTAS ===
 function alternarVerTodosDias() {
     verTodosDias = !verTodosDias;
     document.getElementById('btnVerTodosDias').textContent = verTodosDias ? "📅 Ver Solo Hoy" : "📅 Ver Todos los Días";
@@ -532,58 +459,40 @@ function alternarVerHistorial() {
 
 function buscarPorFecha() {
     const fechaBuscada = document.getElementById('fechaBusqueda').value.trim();
-    if (!fechaBuscada) return dibujarHistorial();
-    const filtradas = listaCompras.filter(c => c.fecha === fechaBuscada);
-    dibujarHistorial(filtradas);
+    dibujarHistorial(fechaBuscada ? listaCompras.filter(c => c.fecha === fechaBuscada) : null);
 }
 
 function dibujarHistorial(listaPersonalizada = null) {
     const contenedor = document.getElementById('contenedorHistorial');
-    let comprasMostrar = listaPersonalizada || listaCompras;
+    let comprasMostrar = listaPersonalizada || (verTodoHistorial ? listaCompras : listaCompras.filter(c => c.fecha === fechaHoy));
     
-    if (!verTodoHistorial && !listaPersonalizada) {
-        comprasMostrar = comprasMostrar.filter(c => c.fecha === fechaHoy);
-    }
-
     if (comprasMostrar.length === 0) {
-        contenedor.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No hay compras registradas</p>';
+        contenedor.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">Sin compras registradas</p>';
         return;
     }
 
-    const agrupadasPorFecha = {};
-    comprasMostrar.forEach(c => {
-        if (!agrupadasPorFecha[c.fecha]) agrupadasPorFecha[c.fecha] = [];
-        agrupadasPorFecha[c.fecha].push(c);
-    });
+    const agrupadas = {};
+    comprasMostrar.forEach(c => { if (!agrupadas[c.fecha]) agrupadas[c.fecha] = []; agrupadas[c.fecha].push(c); });
 
     let html = '';
-    Object.keys(agrupadasPorFecha).forEach(fecha => {
-        const esHoy = fecha === fechaHoy;
+    Object.keys(agrupadas).forEach(fecha => {
         html += `
             <div class="item-fecha">
                 <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼'">
-                    <span>📅 ${fecha} ${esHoy ? '(HOY)' : ''}</span>
+                    <span>📅 ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span>
                     <span class="flecha">▼</span>
                 </div>
                 <div class="contenido-fechas">
                     <table class="tabla-resumen">
-                        <thead>
-                            <tr>
-                                <th>Hora</th>
-                                <th>Total</th>
-                                <th>Recibo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-        `;
-        agrupadasPorFecha[fecha].forEach(compra => {
+                        <thead><tr><th>Hora</th><th>Total</th><th>Recibo</th></tr></thead>
+                        <tbody>`;
+        agrupadas[fecha].forEach(compra => {
             html += `
                 <tr>
                     <td>${compra.hora}</td>
                     <td>$${compra.total.toFixed(2)}</td>
-                    <td><button class="btn-cliente" onclick='mostrarRecibo(${JSON.stringify(compra).replace(/"/g, "&quot;")})'>Ver Recibo</button></td>
-                </tr>
-            `;
+                    <td><button class="btn-cliente" onclick='mostrarRecibo(${JSON.stringify(compra).replace(/"/g, "&quot;")})'>Ver</button></td>
+                </tr>`;
         });
         html += `</tbody></table></div></div>`;
     });
@@ -596,64 +505,58 @@ function dibujarTotales() {
     let comprasMostrar = verTodosDias ? listaCompras : listaCompras.filter(c => c.fecha === fechaHoy);
     
     if (comprasMostrar.length === 0) {
-        contenedor.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No hay datos para mostrar</p>';
+        contenedor.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">Sin datos para mostrar</p>';
         return;
     }
 
-    const totalesPorFecha = {};
+    const totales = {};
     let totalGeneral = 0;
     comprasMostrar.forEach(c => {
-        if (!totalesPorFecha[c.fecha]) totalesPorFecha[c.fecha] = 0;
-        totalesPorFecha[c.fecha] += c.total;
+        if (!totales[c.fecha]) totales[c.fecha] = 0;
+        totales[c.fecha] += c.total;
         totalGeneral += c.total;
     });
 
     let html = `<div class="fila-total-general">TOTAL GENERAL: $${totalGeneral.toFixed(2)}</div>`;
-    Object.keys(totalesPorFecha).forEach(fecha => {
-        const esHoy = fecha === fechaHoy;
+    Object.keys(totales).forEach(fecha => {
         html += `
             <div class="item-fecha" style="margin-top:12px;">
                 <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼'">
-                    <span>📅 Día: ${fecha} ${esHoy ? '(HOY)' : ''}</span>
+                    <span>📅 Día: ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span>
                     <span class="flecha">▼</span>
                 </div>
                 <div class="contenido-fechas">
-                    <p style="font-size:15px; font-weight:600; color:#2e7d32; padding:8px 0;">Total del día: $${totalesPorFecha[fecha].toFixed(2)}</p>
+                    <p style="font-size:15px; font-weight:600; color:#2e7d32; padding:8px 0;">Total del día: $${totales[fecha].toFixed(2)}</p>
                 </div>
-            </div>
-        `;
+            </div>`;
     });
 
     contenedor.innerHTML = html;
 }
 
-// === SINCRONIZACIÓN AUTOMÁTICA AL RECUPERAR INTERNET ===
+// === SINCRONIZACIÓN AL RECUPERAR INTERNET ===
 window.addEventListener('online', async () => {
     document.getElementById('estadoConexion').innerHTML = "✅ Conectado | Sincronizando...";
-    if (comprasPendientes.length > 0) {
+    if (supabase && comprasPendientes.length > 0) {
         for (const pendiente of comprasPendientes) {
             try {
-                if (pendiente.tipo === 'material') {
-                    await supabase.from('materiales').upsert([pendiente.datos]);
-                } else if (pendiente.tipo === 'compra') {
+                if (pendiente.tipo === 'material') await supabase.from('materiales').upsert([pendiente.datos]);
+                if (pendiente.tipo === 'compra') {
                     const clave = generarClaveUnica(pendiente.datos);
                     const existe = listaCompras.some(c => generarClaveUnica(c) === clave);
                     if (!existe) await supabase.from('compras').insert([pendiente.datos]);
                 }
-            } catch (err) {
-                console.log('Error al sincronizar:', err);
-            }
+            } catch {}
         }
         comprasPendientes = [];
         localStorage.setItem('comprasPendientes', JSON.stringify([]));
-        await sincronizarDesdeNube();
+        await sincronizarEnSegundoPlano();
         alert('✅ Todos los datos sincronizados');
     }
-    document.getElementById('estadoConexion').innerHTML = "✅ Conectado | Datos actualizados";
 });
 
 window.addEventListener('offline', () => {
-    document.getElementById('estadoConexion').innerHTML = "⚠️ Sin internet | Los datos se guardarán al reconectar";
+    document.getElementById('estadoConexion').innerHTML = "⚠️ Sin internet | Todo guardado en el celular";
 });
 </script>
 </body>
