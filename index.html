@@ -180,6 +180,7 @@ let fechaHoy = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guaya
 let todasLasCompras = [];
 let comprasLocales = JSON.parse(localStorage.getItem('comprasLocales')) || [];
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
+let listaMateriales = [];
 
 function generarClaveUnica(compra) {
     return `${compra.fecha||''}-${compra.hora||''}-${compra.total||0}-${JSON.stringify(compra.detalles||[])}`;
@@ -207,7 +208,7 @@ function actualizarEstadoConexion(conectado) {
 window.addEventListener('online', () => { actualizarEstadoConexion(true); sincronizarPendientes(); });
 window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
-// ========== MATERIALES (CARGA LO QUE YA TIENES) ==========
+// ========== MATERIALES (YA MUESTRA TODOS LOS QUE TIENES) ==========
 async function cargarMateriales(){
     let datosNube = [];
     try { 
@@ -219,10 +220,13 @@ async function cargarMateriales(){
     const mapa = new Map();
     datosNube.forEach(m => mapa.set(m.nombre.toLowerCase(), m));
     datosLocales.forEach(m => { if(!mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m); });
-    const final = Array.from(mapa.values());
-    localStorage.setItem('materialesLocales', JSON.stringify(final));
-    actualizarTablaMateriales(final);
-    actualizarSelectMateriales(final);
+    
+    listaMateriales = Array.from(mapa.values());
+    localStorage.setItem('materialesLocales', JSON.stringify(listaMateriales));
+    
+    // ✅ AHORA SÍ DIBUJA TODOS LOS MATERIALES EN LA TABLA
+    actualizarTablaMateriales(listaMateriales);
+    actualizarSelectMateriales(listaMateriales);
 }
 
 async function guardarMaterial(){
@@ -231,12 +235,13 @@ async function guardarMaterial(){
     const precio = parseFloat(document.getElementById('precioUnitario').value);
     if(!nombre || isNaN(precio) || precio <=0) return alert('Completa todos los datos correctamente');
     
-    const lista = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    if(lista.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) return alert('Este material ya existe');
+    if(listaMateriales.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) {
+        return alert('⚠️ Este material ya existe, no hace falta volver a guardarlo');
+    }
     
     const nuevo = { nombre, unidad, precio_unitario: precio };
-    lista.push(nuevo);
-    localStorage.setItem('materialesLocales', JSON.stringify(lista));
+    listaMateriales.push(nuevo);
+    localStorage.setItem('materialesLocales', JSON.stringify(listaMateriales));
     
     try {
         const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
@@ -249,7 +254,8 @@ async function guardarMaterial(){
     
     document.getElementById('nombreMaterial').value = '';
     document.getElementById('precioUnitario').value = '';
-    cargarMateriales();
+    actualizarTablaMateriales(listaMateriales);
+    actualizarSelectMateriales(listaMateriales);
 }
 
 function actualizarTablaMateriales(lista){
@@ -263,13 +269,21 @@ function actualizarTablaMateriales(lista){
 
 async function eliminarMaterial(id){
     if(String(id).startsWith('l-')) {
-        let l = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-        l.splice(Number(id.split('-')[1]),1);
-        localStorage.setItem('materialesLocales', JSON.stringify(l));
-        cargarMateriales();
+        const indice = Number(id.split('-')[1]);
+        listaMateriales.splice(indice,1);
+        localStorage.setItem('materialesLocales', JSON.stringify(listaMateriales));
+        actualizarTablaMateriales(listaMateriales);
+        actualizarSelectMateriales(listaMateriales);
         return;
     }
-    try { await supabaseCliente.from('materiales').delete().eq('id', id); cargarMateriales(); }
+    try { 
+        await supabaseCliente.from('materiales').delete().eq('id', id); 
+        const indice = listaMateriales.findIndex(m => m.id === id);
+        if(indice !== -1) listaMateriales.splice(indice,1);
+        localStorage.setItem('materialesLocales', JSON.stringify(listaMateriales));
+        actualizarTablaMateriales(listaMateriales);
+        actualizarSelectMateriales(listaMateriales);
+    }
     catch { alert('Se eliminará automáticamente cuando tenga internet'); }
 }
 
@@ -289,8 +303,7 @@ async function agregarAlCarrito(){
     if(!nombre) return alert('Seleccione un material');
     if(!cantidad || cantidad <=0) return alert('Escriba el peso recibido');
 
-    const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    let mat = locales.find(m => m.nombre === nombre);
+    let mat = listaMateriales.find(m => m.nombre === nombre);
     if(!mat) return alert('Material no encontrado');
 
     carrito.push({ nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: mat.precio_unitario, subtotal: cantidad * mat.precio_unitario });
@@ -406,7 +419,7 @@ function cerrarVentana(){
     document.getElementById('btnVerCliente').style.display = 'none';
 }
 
-// ========== VISTAS (RECUPERAMOS TODAS LAS FUNCIONES QUE TE GUSTABAN) ==========
+// ========== VISTAS ==========
 function alternarVerTodosDias(){
     verTodosLosDiasActivo = !verTodosLosDiasActivo;
     const btn = document.getElementById('btnVerTodosDias');
