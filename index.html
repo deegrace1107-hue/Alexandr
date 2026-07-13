@@ -24,14 +24,13 @@
         .btn-buscar { background-color: #1976d2; width: auto; }
         .btn-ver-todos { background-color: #ff9800; width: auto; }
         .btn-quitar { background-color: #ef5350; padding: 4px 6px; font-size: 11px; border-radius: 4px; width: auto; }
-        .btn-cliente, .btn-detallada { padding: 4px 2px !important; font-size: 10.5px !important; min-width: 60px !important; width: 100% !important; margin: 1px !important; }
+        .btn-cliente, .btn-detallada { padding: 4px 2px !important; font-size: 10.5px !important; min-width: 60px !important; width: auto !important; margin: 1px !important; }
         .btn-ver-historial { background-color: #795548; width: auto; color: white; font-weight: bold; }
         .btn-danger { background-color: #d32f2f; }
         .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; margin: 6px 0; border-radius: 6px; border: 1px solid #e0e0e0; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
         th, td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: center; vertical-align: middle; }
         th { background-color: #e8f5e9; color: #1b5e20; font-weight: 600; }
-        .fila-total-dia { background-color: #e8f5e9; font-weight: 600; color: #1b5e20; }
         .fila-total-general { background-color: #e3f2fd; font-weight: 700; color: #0d47a1; font-size: 13px; }
         .total { text-align: right; font-size: 15px; font-weight: 700; color: #1b5e20; margin: 8px 0; padding-right: 4px; }
         .resumen { background-color: #f1f8e9; border-color: #8bc34a; }
@@ -81,7 +80,6 @@
 <div class="container">
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <!-- ✅ TEXTO CAMBIADO: LIMPIO Y FÁCIL DE ENTENDER -->
     <div class="aviso" id="estadoConexion">✅ Todo listo para trabajar</div>
 
     <div class="section">
@@ -141,7 +139,7 @@
             <button class="btn-ver-todos" id="btnVerTodosDias" onclick="alternarVerTodosDias()">📋 Ver Todos los Días</button>
         </div>
         <div id="listaTotalesPorDia">
-            <p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>
+            <p style="text-align:center; color:#666; padding:10px;">Cargando totales...</p>
         </div>
     </div>
 
@@ -151,7 +149,7 @@
             <button class="btn-ver-historial" id="btnVerHistorialCompleto" onclick="alternarVerHistorial()">📋 Ver Historial Completo</button>
         </div>
         <div id="listaHistorial">
-            <p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas aún</p>
+            <p style="text-align:center; color:#666; padding:10px;">Cargando historial...</p>
         </div>
     </div>
 </div>
@@ -170,7 +168,6 @@
 </div>
 
 <script>
-// 🔑 TUS DATOS DE SUPABASE
 const URL_SUPABASE = "https://eqvyxdecgoroltpjuips.supabase.co";
 const CLAVE_SUPABASE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdnl4ZGVjZ29yb2x0cGp1aXBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA4OTgsImV4cCI6MjA5ODYxNjg5OH0.lViGOOhJwRjF11ize_yNo8OtTOlo8bzXCtFZ13Ku4dE";
 
@@ -181,10 +178,9 @@ let verTodosLosDiasActivo = false;
 let verHistorialCompletoActivo = false;
 let fechaHoy = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' });
 let todasLasCompras = [];
-let comprasLocales = JSON.parse(localStorage.getItem('comprasLocales')) || '[]');
+let comprasLocales = JSON.parse(localStorage.getItem('comprasLocales')) || [];
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 
-// ✅ PROTECCIÓN CONTRA DUPLICADOS
 function generarClaveUnica(compra) {
     return `${compra.fecha||''}-${compra.hora||''}-${compra.total||0}-${JSON.stringify(compra.detalles||[])}`;
 }
@@ -211,7 +207,7 @@ function actualizarEstadoConexion(conectado) {
 window.addEventListener('online', () => { actualizarEstadoConexion(true); sincronizarPendientes(); });
 window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
-// ========== MATERIALES ==========
+// ========== MATERIALES (CARGA LO QUE YA TIENES) ==========
 async function cargarMateriales(){
     let datosNube = [];
     try { 
@@ -286,7 +282,7 @@ function actualizarSelectMateriales(lista){
     select.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio_unitario.toFixed(2)}/${m.unidad}</option>`).join('');
 }
 
-// ========== COMPRAS Y FACTURAS ==========
+// ========== COMPRAS ==========
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
@@ -362,6 +358,7 @@ async function generarFacturas(){
     actualizarVistas();
 }
 
+// ========== FACTURAS ==========
 function mostrarCliente(){
     if(!facturaActual) return;
     let agrupado = {};
@@ -409,7 +406,7 @@ function cerrarVentana(){
     document.getElementById('btnVerCliente').style.display = 'none';
 }
 
-// ========== VISTAS Y SINCRONIZACIÓN ==========
+// ========== VISTAS (RECUPERAMOS TODAS LAS FUNCIONES QUE TE GUSTABAN) ==========
 function alternarVerTodosDias(){
     verTodosLosDiasActivo = !verTodosLosDiasActivo;
     const btn = document.getElementById('btnVerTodosDias');
