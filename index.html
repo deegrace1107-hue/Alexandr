@@ -355,7 +355,6 @@ async function generarFacturas(){
         alert("✅ Guardado en su dispositivo, se sincronizará al conectarse");
     } else {
         alert("✅ Factura guardada exitosamente");
-        // ✅ SE BORRA DE LO LOCAL EN CUANTO SE SUBE A LA NUBE
         datosPendientes = datosPendientes.filter(item => generarClaveUnica(item.datos) !== claveUnica);
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
     }
@@ -442,7 +441,6 @@ function buscarPorFecha(){
 }
 
 async function cargarHistorialYTotales(){
-    // 🔴 LIMPIA LO LOCAL PRIMERO: SOLO MOSTRAMOS LO QUE EXISTE EN LA NUBE
     localStorage.removeItem('comprasLocales');
     let comprasNube = [];
     try { 
@@ -528,14 +526,12 @@ function dibujarTotales(listaPersonalizada = null){
         return;
     }
 
-    // Agrupamos las compras por fecha
     const agrupadas = {};
     mostrar.forEach(c => { 
         if(!agrupadas[c.fecha]) agrupadas[c.fecha] = []; 
         agrupadas[c.fecha].push(c); 
     });
 
-    // Ordenamos las fechas de la más nueva a la más vieja
     const fechas = Object.keys(agrupadas).sort((a,b) => {
         const [da,ma,ya] = a.split('/').map(Number);
         const [db,mb,yb] = b.split('/').map(Number);
@@ -561,6 +557,7 @@ function dibujarTotales(listaPersonalizada = null){
         </div>`;
     }).join('') + `<table class="tabla-resumen"><tr class="fila-total-general"><td colspan="3" style="text-align:center;">💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}</td></tr></table>`;
 }
+
 function verCompraGuardada(c,t){
     facturaActual = c;
     t==="cliente"?mostrarCliente():mostrarDetallada();
