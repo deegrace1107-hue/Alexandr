@@ -234,7 +234,17 @@ let sincronizando = false;
 let verTodosLosDiasActivo = false;
 let verHistorialCompletoActivo = false;
 let fechaHoy = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' });
-let todasLasFacturas = []; // Guardamos todas las facturas aquí
+let todasLasFacturas = [];
+let guardandoFactura = false;
+
+// 🆕 Función para normalizar la hora: siempre queda HH:MM sin segundos
+function normalizarHora(hora) {
+    if (!hora) return '00:00';
+    const partes = hora.split(':');
+    const horas = partes[0].padStart(2, '0');
+    const minutos = (partes[1] || '00').padStart(2, '0');
+    return `${horas}:${minutos}`;
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
@@ -266,16 +276,25 @@ async function sincronizarPendientes(){
         for(const item of datosPendientes){
             try {
                 if(item.tipo === 'factura'){
-                    const { error } = await supabaseCliente.from('facturas').insert([item.datos]);
-                    if(!error) subidos++;
-                    else quedanPendientes.push(item);
+                    // Normalizamos la hora antes de comprobar duplicado
+                    item.datos.hora = normalizarHora(item.datos.hora);
+                    const claveUnica = `${item.datos.fecha||''}-${item.datos.hora||''}-${item.datos.total_general||0}-${JSON.stringify(item.datos.detalles||[])}`;
+                    const { data: existentes } = await supabaseCliente.from('facturas').select('*').eq('fecha', item.datos.fecha);
+                    const yaExiste = existentes?.some(f => {
+                        f.hora = normalizarHora(f.hora);
+                        return `${f.fecha||''}-${f.hora||''}-${f.total_general||0}-${JSON.stringify(f.detalles||[])}` === claveUnica;
+                    });
+                    if(!yaExiste) {
+                        const { error } = await supabaseCliente.from('facturas').insert([item.datos]);
+                        if(!error) subidos++;
+                        else quedanPendientes.push(item);
+                    } else subidos++;
                 } else quedanPendientes.push(item);
             } catch { quedanPendientes.push(item); }
         }
         datosPendientes = quedanPendientes;
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
         if(subidos > 0) alert(`✅ Se subieron ${subidos} compras a tu base!`);
-        // Volvemos a cargar todas las facturas después de sincronizar
         await cargarHistorialYTotales();
     } finally { sincronizando = false; }
 }
@@ -379,36 +398,53 @@ function actualizarCarrito(){
 }
 
 async function generarFacturas(){
+    if(guardandoFactura) return alert('⚠️ Guardando compra, espera un momento por favor');
     if(carrito.length === 0) return alert('Agrega materiales primero');
+    
+    guardandoFactura = true;
     const totalGeneral = carrito.reduce((s,i) => s + i.total, 0);
     const fecha = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' });
     const ahora = new Date();
-    const hora = `${ahora.getHours().toString().padStart(2,'0')}:${ahora.getMinutes().toString().padStart(2,'0')}`;
+    // 🆕 Siempre guardamos la hora en formato HH:MM sin segundos
+    const hora = normalizarHora(ahora.toLocaleTimeString('es-EC', {hour12: false}));
     const creado_el = new Date().toISOString();
     facturaActual = { fecha, hora, total_general: totalGeneral, detalles: [...carrito], creado_el };
 
-    facturasLocales.push(facturaActual);
-    localStorage.setItem('facturasLocales', JSON.stringify(facturasLocales));
+    const claveUnica = `${fecha}-${hora}-${totalGeneral}-${JSON.stringify(facturaActual.detalles)}`;
+
+    const existeLocal = facturasLocales.some(f => {
+        f.hora = normalizarHora(f.hora);
+        return `${f.fecha}-${f.hora}-${f.total_general}-${JSON.stringify(f.detalles)}` === claveUnica;
+    });
+    if(!existeLocal) {
+        facturasLocales.push(facturaActual);
+        localStorage.setItem('facturasLocales', JSON.stringify(facturasLocales));
+    }
 
     let subidoBien = false;
     try {
-        const { error } = await supabaseCliente.from('facturas').insert([facturaActual]);
-        if(!error) {
-            subidoBien = true;
-            alert("✅ Venta guardada y subida a tu base de datos!");
-        }
+        const { data: existentes } = await supabaseCliente.from('facturas').select('*').eq('fecha', fecha);
+        const existeNube = existentes?.some(f => {
+            f.hora = normalizarHora(f.hora);
+            return `${f.fecha}-${f.hora}-${f.total_general}-${JSON.stringify(f.detalles)}` === claveUnica;
+        });
+        if(!existeNube) {
+            const { error } = await supabaseCliente.from('facturas').insert([facturaActual]);
+            if(!error) subidoBien = true;
+        } else subidoBien = true;
     } catch {}
 
     if(!subidoBien) {
-        const yaExiste = datosPendientes.some(p => 
-            p.datos.fecha === fecha && p.datos.hora === hora && p.datos.total_general === totalGeneral
-        );
-        if(!yaExiste) {
+        const yaPendiente = datosPendientes.some(p => {
+            p.datos.hora = normalizarHora(p.datos.hora);
+            return `${p.datos.fecha}-${p.datos.hora}-${p.datos.total_general}-${JSON.stringify(p.datos.detalles)}` === claveUnica;
+        });
+        if(!yaPendiente) {
             datosPendientes.push({tipo:'factura', datos:facturaActual});
             localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
         }
         alert("✅ Venta guardada SEGURA en tu celular. Se subirá automáticamente cuando vuelvas a tener internet.");
-    }
+    } else alert("✅ Venta guardada y subida a tu base de datos!");
 
     mostrarCliente();
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
@@ -417,6 +453,7 @@ async function generarFacturas(){
     carrito = [];
     actualizarCarrito();
     await cargarHistorialYTotales();
+    guardandoFactura = false;
 }
 
 // ========== FACTURAS ==========
@@ -504,7 +541,6 @@ function alternarVerHistorial(){
     verHistorialCompletoActivo = !verHistorialCompletoActivo;
     const btn = document.getElementById('btnVerHistorialCompleto');
     btn.textContent = verHistorialCompletoActivo ? '📋 Ver Solo Hoy' : '📋 Ver Historial Completo';
-    // Usamos todas las facturas que cargamos
     actualizarVistaHistorial(todasLasFacturas);
 }
 
@@ -516,16 +552,18 @@ async function cargarHistorialYTotales(){
         if(!error) facturasNube = data || []; 
     } catch {}
     
-    // ✅ JUNTA Y ELIMINA DUPLICADAS DE FORMA SEGURA
-    const todas = [...facturasNube, ...facturasLocales];
-    todasLasFacturas = Array.from(
-        new Map(
-            todas.map(f => [
-                `${f.fecha||''}-${f.hora||''}-${f.total_general||0}-${JSON.stringify(f.detalles||[])}`, 
-                f
-            ])
-        ).values()
-    );
+    // 🆕 Normalizamos todas las horas antes de juntar y quitar duplicados
+    const todas = [...facturasNube, ...facturasLocales].map(f => {
+        f.hora = normalizarHora(f.hora);
+        return f;
+    });
+    
+    const mapaUnico = new Map();
+    todas.forEach(f => {
+        const clave = `${f.fecha||''}-${f.hora||''}-${f.total_general||0}-${JSON.stringify(f.detalles||[])}`;
+        if(!mapaUnico.has(clave)) mapaUnico.set(clave, f);
+    });
+    todasLasFacturas = Array.from(mapaUnico.values());
     
     procesarFacturas(todasLasFacturas);
 }
@@ -566,7 +604,6 @@ function actualizarVistaHistorial(facturas){
     const agrupado = {};
     facturas.forEach(f => { if(!agrupado[f.fecha]) agrupado[f.fecha] = []; agrupado[f.fecha].push(f); });
     
-    // ✅ Ordenamos fechas de más nueva a más vieja
     const fechasOrdenadas = Object.keys(agrupado).sort((a, b) => {
         const [dA, mA, yA] = a.split('/').map(Number);
         const [dB, mB, yB] = b.split('/').map(Number);
@@ -665,14 +702,4 @@ function actualizarVistaTotalesPorDia(){
             <div class="contenido-fechas abierto">
                 <table class="tabla-resumen">
                     <tr><th>Material</th><th>Peso Total Sumado</th><th>Monto Total Sumado</th><th>Acción</th></tr>
-                    ${Object.entries(acu).map(([n,d])=>`<tr><td>${n}</td><td>${d.cantidad.toFixed(1)} ${d.unidad}</td><td>$${d.monto.toFixed(2)}</td><td><button class="btn-reiniciar-individual" onclick="reiniciarMaterialNuevoPeriodo('${n}')">🔄 Empezar de Cero</button></td></tr>`).join('')}
-                    <tr class="fila-total-general"><td colspan="4" style="text-align:center;">💰 TOTAL GENERAL: $${totalG.toFixed(2)}</td></tr>
-                </table>
-            </div>
-        </div>`;
-    }
-    lista.innerHTML = html;
-}
-</script>
-</body>
-</html>
+                    ${Object.entries(acu).map(([n,d])=>`<tr><td>${n}</td><td>${d.cantidad.toFixed(1)} ${d.unidad}</td><td>$${d.monto.toFixed(2)}</td><td><button class="btn-rein
