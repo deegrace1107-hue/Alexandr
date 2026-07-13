@@ -528,13 +528,15 @@ function dibujarTotales(listaPersonalizada = null){
         return;
     }
 
-    const totalesPorDia = {};
-    mostrar.forEach(c => {
-        if(!totalesPorDia[c.fecha]) totalesPorDia[c.fecha] = 0;
-        totalesPorDia[c.fecha] += Number(c.total || 0);
+    // Agrupamos las compras por fecha
+    const agrupadas = {};
+    mostrar.forEach(c => { 
+        if(!agrupadas[c.fecha]) agrupadas[c.fecha] = []; 
+        agrupadas[c.fecha].push(c); 
     });
 
-    const fechas = Object.keys(totalesPorDia).sort((a,b) => {
+    // Ordenamos las fechas de la más nueva a la más vieja
+    const fechas = Object.keys(agrupadas).sort((a,b) => {
         const [da,ma,ya] = a.split('/').map(Number);
         const [db,mb,yb] = b.split('/').map(Number);
         return new Date(yb, mb-1, db) - new Date(ya, ma-1, da);
@@ -542,17 +544,23 @@ function dibujarTotales(listaPersonalizada = null){
 
     let totalGeneral = 0;
     contenedor.innerHTML = fechas.map(fecha => {
-        totalGeneral += totalesPorDia[fecha];
+        const totalDia = agrupadas[fecha].reduce((s,c) => s + Number(c.total || 0), 0);
+        totalGeneral += totalDia;
         return `
         <div class="item-fecha">
-            <div class="titulo-fecha">
+            <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼'">
                 <span>📅 ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span>
-                <span>💵 $${totalesPorDia[fecha].toFixed(2)}</span>
+                <span>💵 $${totalDia.toFixed(2)} <span class="flecha">▼</span></span>
+            </div>
+            <div class="contenido-fechas">
+                <table class="tabla-resumen">
+                    <tr><th>Hora</th><th>Total</th><th>Ver Detalle</th></tr>
+                    ${agrupadas[fecha].map(c => `<tr><td>${c.hora}</td><td>$${c.total.toFixed(2)}</td><td><button class="btn-ver-todos" onclick='verCompraGuardada(${JSON.stringify(c).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td></tr>`).join('')}
+                </table>
             </div>
         </div>`;
-    }).join('') + `<table class="tabla-resumen"><tr class="fila-total-general"><td colspan="2" style="text-align:center;">💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}</td></tr></table>`;
+    }).join('') + `<table class="tabla-resumen"><tr class="fila-total-general"><td colspan="3" style="text-align:center;">💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}</td></tr></table>`;
 }
-
 function verCompraGuardada(c,t){
     facturaActual = c;
     t==="cliente"?mostrarCliente():mostrarDetallada();
