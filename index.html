@@ -27,7 +27,7 @@
         .btn-ver-todos:hover { background-color: #fb8c00; }
         .btn-quitar { background-color: #ef5350; min-width: auto; padding: 6px 10px; font-size: 12px; }
         .btn-quitar:hover { background-color: #e53935; }
-        .btn-cliente { background-color: #43a047; padding: 7px 4px; font-size: 13px; min-width: 65px; margin: 2px; }
+        .btn-cliente { background-color: #43a047; padding: 7px 10px; font-size: 13px; min-width: auto; margin: 2px; }
         .btn-cliente:hover { background-color: #388e3c; }
         .btn-ver-historial { background-color: #795548; color: #fff; font-weight: bold; border: none; padding: 10px 18px; border-radius: 8px; font-size: 15px; }
         .btn-ver-historial:hover { background-color: #5d4037; }
@@ -36,7 +36,7 @@
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { border: 1px solid #e0e0e0; padding: 7px 5px; text-align: center; vertical-align: middle; }
         th { background-color: #e8f5e9; color: #1b5e20; font-weight: 600; }
-        .fila-total-general { background-color: #e3f2fd; font-weight: 700; color: #0d47a1; font-size: 15px; padding: 12px; border-radius: 6px; margin-top: 10px; }
+        .fila-total-general { background-color: #e3f2fd; font-weight: 700; color: #0d47a1; font-size: 16px; padding: 12px; border-radius: 6px; margin-top: 10px; }
         .total { text-align: right; font-size: 16px; font-weight: 700; color: #1b5e20; margin: 10px 0; padding-right: 8px; }
         .aviso { background: #e3f2fd; padding: 8px; border-radius: 6px; margin-bottom: 10px; text-align: center; color: #0d47a1; font-size: 13px; font-weight: 500; }
         .tabla-resumen { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
@@ -200,30 +200,25 @@ function generarClaveUnica(compra) {
     return `${compra.fecha||''}-${normalizarHora(compra.hora||'')}-${compra.total||0}-${JSON.stringify(compra.detalles||[])}`;
 }
 
-// === INICIO: CARGA PRIMERO DE LA NUBE, LUEGO LOCAL ===
+// === INICIO: CARGA DESDE LA NUBE PRIMERO ===
 document.addEventListener('DOMContentLoaded', async () => {
-    // ✅ PRIMERO INTENTA BAJAR TODOS TUS DATOS DE LA NUBE (FUNCIONA EN CUALQUIER TELÉFONO)
     if (supabase) {
         try {
-            // Cargar materiales de la nube
             const { data: matNube, error: errMat } = await supabase.from('materiales').select('*').order('nombre', {ascending:true});
             if (!errMat && matNube) listaMateriales = matNube;
 
-            // Cargar compras de la nube
             const { data: comprasNube, error: errComp } = await supabase.from('compras').select('*').order('creado_en', {ascending:false});
             if (!errComp && comprasNube) listaCompras = comprasNube;
 
-            // Guarda en el celular para usar sin internet
             localStorage.setItem('materialesLocal', JSON.stringify(listaMateriales));
             localStorage.setItem('comprasGuardadas', JSON.stringify(listaCompras));
             document.getElementById('estadoConexion').innerHTML = "✅ Conectado | Datos cargados";
         } catch (err) {
-            console.log("No se pudo bajar de la nube, usando datos locales:", err);
+            console.log("Usando datos locales:", err);
             document.getElementById('estadoConexion').innerHTML = "⚠️ Usando datos guardados en el celular";
         }
     }
 
-    // ✅ SI NO HAY NADA EN LA NUBE, USA LO QUE TENGAS GUARDADO EN EL CELULAR
     if (listaMateriales.length === 0) {
         const guardados = localStorage.getItem('materialesLocal');
         if (guardados) listaMateriales = JSON.parse(guardados);
@@ -233,14 +228,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (guardadas) listaCompras = JSON.parse(guardadas);
     }
 
-    // ✅ MUESTRA TODO EN PANTALLA DE INMEDIATO
     dibujarTablaMateriales();
     actualizarSelectMateriales();
     dibujarHistorial();
     dibujarTotales();
 });
 
-// === FUNCIONES DE DIBUJO SEGURAS ===
+// === MATERIALES ===
 function dibujarTablaMateriales() {
     const cuerpo = document.getElementById('cuerpoTablaMateriales');
     cuerpo.innerHTML = '';
@@ -268,7 +262,6 @@ function actualizarSelectMateriales() {
     });
 }
 
-// === GESTIÓN DE MATERIALES ===
 async function guardarMaterial() {
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
@@ -308,7 +301,7 @@ async function eliminarMaterial(id) {
     actualizarSelectMateriales();
 }
 
-// === GESTIÓN DEL CARRITO Y COMPRAS ===
+// === CARRITO Y COMPRAS ===
 function agregarAlCarrito() {
     const idMaterial = parseInt(document.getElementById('materialSeleccionado').value);
     const cantidad = parseFloat(document.getElementById('pesoCantidad').value);
@@ -403,7 +396,7 @@ async function finalizarCompra() {
     dibujarTotales();
 }
 
-// === RECIBOS ===
+// === FACTURAS DETALLADAS ===
 function mostrarRecibo(compra) {
     let filas = '';
     compra.detalles.forEach(item => {
@@ -431,7 +424,7 @@ function cerrarVentanaFactura() {
     document.getElementById('ventanaFactura').style.display = 'none';
 }
 
-// === VISTAS ===
+// === VISTAS Y REPORTES ===
 function alternarVerTodosDias() {
     verTodosDias = !verTodosDias;
     document.getElementById('btnVerTodosDias').textContent = verTodosDias ? "📅 Ver Solo Hoy" : "📅 Ver Todos los Días";
@@ -471,14 +464,14 @@ function dibujarHistorial(listaPersonalizada = null) {
                 </div>
                 <div class="contenido-fechas">
                     <table class="tabla-resumen">
-                        <thead><tr><th>Hora</th><th>Total</th><th>Recibo</th></tr></thead>
+                        <thead><tr><th>Hora</th><th>Total</th><th>Factura Detallada</th></tr></thead>
                         <tbody>`;
         agrupadas[fecha].forEach(compra => {
             html += `
                 <tr>
                     <td>${compra.hora}</td>
                     <td>$${compra.total.toFixed(2)}</td>
-                    <td><button class="btn-cliente" onclick='mostrarRecibo(${JSON.stringify(compra).replace(/"/g, "&quot;")})'>Ver</button></td>
+                    <td><button class="btn-cliente" onclick='mostrarRecibo(${JSON.stringify(compra).replace(/"/g, "&quot;")})'>📄 Ver Detalle</button></td>
                 </tr>`;
         });
         html += `</tbody></table></div></div>`;
@@ -504,7 +497,7 @@ function dibujarTotales() {
         totalGeneral += c.total;
     });
 
-    let html = `<div class="fila-total-general">TOTAL GENERAL: $${totalGeneral.toFixed(2)}</div>`;
+    let html = `<div class="fila-total-general">💰 TOTAL GENERAL DE TODOS LOS DÍAS: $${totalGeneral.toFixed(2)}</div>`;
     Object.keys(totales).forEach(fecha => {
         html += `
             <div class="item-fecha" style="margin-top:12px;">
@@ -513,7 +506,7 @@ function dibujarTotales() {
                     <span class="flecha">▼</span>
                 </div>
                 <div class="contenido-fechas">
-                    <p style="font-size:15px; font-weight:600; color:#2e7d32; padding:8px 0;">Total del día: $${totales[fecha].toFixed(2)}</p>
+                    <p style="font-size:15px; font-weight:600; color:#2e7d32; padding:8px 0;">✅ Total del día: $${totales[fecha].toFixed(2)}</p>
                 </div>
             </div>`;
     });
@@ -521,7 +514,7 @@ function dibujarTotales() {
     contenedor.innerHTML = html;
 }
 
-// === SINCRONIZACIÓN AL RECUPERAR INTERNET ===
+// === SINCRONIZACIÓN AL VOLVER A TENER INTERNET ===
 window.addEventListener('online', async () => {
     document.getElementById('estadoConexion').innerHTML = "✅ Conectado | Sincronizando...";
     if (supabase && comprasPendientes.length > 0) {
@@ -537,9 +530,7 @@ window.addEventListener('online', async () => {
         }
         comprasPendientes = [];
         localStorage.setItem('comprasPendientes', JSON.stringify([]));
-        alert('✅ Todos los datos sincronizados');
     }
-    // Vuelve a cargar todo para ver los cambios
     if (supabase) {
         const { data: matNube } = await supabase.from('materiales').select('*').order('nombre', {ascending:true});
         if (matNube) listaMateriales = matNube;
@@ -553,6 +544,7 @@ window.addEventListener('online', async () => {
         dibujarTotales();
     }
     document.getElementById('estadoConexion').innerHTML = "✅ Todo actualizado";
+    alert('✅ Todos los datos sincronizados correctamente');
 });
 
 window.addEventListener('offline', () => {
