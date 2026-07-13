@@ -87,7 +87,7 @@
 <div class="container">
     <img src="logo.png" alt="Logo Recicladora" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso" id="estadoConexion">✅ Listo para usar</div>
+    <div class="aviso" id="estadoConexion">🔄 Cargando tus datos...</div>
 
     <div class="section">
         <h2>⚙️ Configurar Materiales</h2>
@@ -114,7 +114,9 @@
                         <th>Acción</th>
                     </tr>
                 </thead>
-                <tbody id="cuerpoTablaMateriales"></tbody>
+                <tbody id="cuerpoTablaMateriales">
+                    <tr><td colspan="4" style="color:#666;">Cargando materiales...</td></tr>
+                </tbody>
             </table>
         </div>
     </div>
@@ -122,7 +124,9 @@
     <div class="section">
         <h2>🛒 Registrar Compra</h2>
         <div class="grid">
-            <select id="materialSeleccionado"></select>
+            <select id="materialSeleccionado">
+                <option value="">Cargando materiales...</option>
+            </select>
             <input type="number" step="0.1" id="pesoCantidad" placeholder="Peso / Cantidad" required>
         </div>
         <button onclick="agregarAlCarrito()">Agregar al listado</button>
@@ -196,63 +200,72 @@ function generarClaveUnica(compra) {
     return `${compra.fecha||''}-${normalizarHora(compra.hora||'')}-${compra.total||0}-${JSON.stringify(compra.detalles||[])}`;
 }
 
-// === INICIO: CARGA INMEDIATA DE TUS DATOS ===
-document.addEventListener('DOMContentLoaded', () => {
-    cargarMaterialesLocales();
-    cargarComprasLocales();
-    document.getElementById('estadoConexion').innerHTML = "✅ Listo para usar";
-    if (supabase) sincronizarEnSegundoPlano();
-});
+// === INICIO: CARGA PRIMERO DE LA NUBE, LUEGO LOCAL ===
+document.addEventListener('DOMContentLoaded', async () => {
+    // ✅ PRIMERO INTENTA BAJAR TODOS TUS DATOS DE LA NUBE (FUNCIONA EN CUALQUIER TELÉFONO)
+    if (supabase) {
+        try {
+            // Cargar materiales de la nube
+            const { data: matNube, error: errMat } = await supabase.from('materiales').select('*').order('nombre', {ascending:true});
+            if (!errMat && matNube) listaMateriales = matNube;
 
-// === CARGA DE DATOS LOCALES (SIEMPRE FUNCIONA) ===
-function cargarMaterialesLocales() {
-    const guardados = localStorage.getItem('materialesLocal');
-    listaMateriales = guardados ? JSON.parse(guardados) : [];
+            // Cargar compras de la nube
+            const { data: comprasNube, error: errComp } = await supabase.from('compras').select('*').order('creado_en', {ascending:false});
+            if (!errComp && comprasNube) listaCompras = comprasNube;
+
+            // Guarda en el celular para usar sin internet
+            localStorage.setItem('materialesLocal', JSON.stringify(listaMateriales));
+            localStorage.setItem('comprasGuardadas', JSON.stringify(listaCompras));
+            document.getElementById('estadoConexion').innerHTML = "✅ Conectado | Datos cargados";
+        } catch (err) {
+            console.log("No se pudo bajar de la nube, usando datos locales:", err);
+            document.getElementById('estadoConexion').innerHTML = "⚠️ Usando datos guardados en el celular";
+        }
+    }
+
+    // ✅ SI NO HAY NADA EN LA NUBE, USA LO QUE TENGAS GUARDADO EN EL CELULAR
+    if (listaMateriales.length === 0) {
+        const guardados = localStorage.getItem('materialesLocal');
+        if (guardados) listaMateriales = JSON.parse(guardados);
+    }
+    if (listaCompras.length === 0) {
+        const guardadas = localStorage.getItem('comprasGuardadas');
+        if (guardadas) listaCompras = JSON.parse(guardadas);
+    }
+
+    // ✅ MUESTRA TODO EN PANTALLA DE INMEDIATO
     dibujarTablaMateriales();
     actualizarSelectMateriales();
-}
-
-function cargarComprasLocales() {
-    const guardadas = localStorage.getItem('comprasGuardadas');
-    listaCompras = guardadas ? JSON.parse(guardadas) : [];
     dibujarHistorial();
     dibujarTotales();
+});
+
+// === FUNCIONES DE DIBUJO SEGURAS ===
+function dibujarTablaMateriales() {
+    const cuerpo = document.getElementById('cuerpoTablaMateriales');
+    cuerpo.innerHTML = '';
+    if (listaMateriales.length === 0) {
+        cuerpo.innerHTML = '<tr><td colspan="4" style="color:#666;">No hay materiales registrados</td></tr>';
+        return;
+    }
+    listaMateriales.forEach(m => {
+        cuerpo.innerHTML += `
+            <tr>
+                <td>${m.nombre || 'Sin nombre'}</td>
+                <td>${m.unidad || 'Libra'}</td>
+                <td>$${(m.precio_unitario || 0).toFixed(2)}</td>
+                <td><button class="btn-quitar" onclick="eliminarMaterial(${m.id})">Eliminar</button></td>
+            </tr>`;
+    });
 }
 
-// === SINCRONIZACIÓN SIN DETENER NADA ===
-async function sincronizarEnSegundoPlano() {
-    try {
-        // Sincronizar materiales
-        const { data: matNube, error: errMat } = await supabase.from('materiales').select('*').order('nombre', {ascending:true});
-        if (!errMat && matNube) {
-            const mapa = new Map();
-            matNube.forEach(m => mapa.set(m.nombre.toLowerCase(), m));
-            listaMateriales.forEach(m => { if (!mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m); });
-            listaMateriales = Array.from(mapa.values());
-            localStorage.setItem('materialesLocal', JSON.stringify(listaMateriales));
-            dibujarTablaMateriales();
-            actualizarSelectMateriales();
-        }
-
-        // Sincronizar compras SIN DUPLICADOS
-        const { data: comprasNube, error: errComp } = await supabase.from('compras').select('*').order('creado_en', {ascending:false});
-        if (!errComp && comprasNube) {
-            const clavesNube = new Set(comprasNube.map(c => generarClaveUnica(c)));
-            const comprasValidas = listaCompras.filter(c => clavesNube.has(generarClaveUnica(c)));
-            const todas = [...comprasNube, ...comprasValidas];
-            const mapaFinal = new Map();
-            todas.forEach(c => mapaFinal.set(generarClaveUnica(c), c));
-            listaCompras = Array.from(mapaFinal.values());
-            localStorage.setItem('comprasGuardadas', JSON.stringify(listaCompras));
-            dibujarHistorial();
-            dibujarTotales();
-        }
-
-        document.getElementById('estadoConexion').innerHTML = "✅ Conectado y sincronizado";
-    } catch (err) {
-        console.log("Sincronización en segundo plano:", err);
-        document.getElementById('estadoConexion').innerHTML = "⚠️ Usando datos del celular";
-    }
+function actualizarSelectMateriales() {
+    const select = document.getElementById('materialSeleccionado');
+    select.innerHTML = '<option value="">Selecciona un material</option>';
+    if (listaMateriales.length === 0) return;
+    listaMateriales.forEach(m => {
+        select.innerHTML += `<option value="${m.id}">${m.nombre} - $${(m.precio_unitario || 0).toFixed(2)}/${m.unidad}</option>`;
+    });
 }
 
 // === GESTIÓN DE MATERIALES ===
@@ -293,32 +306,6 @@ async function eliminarMaterial(id) {
     localStorage.setItem('materialesLocal', JSON.stringify(listaMateriales));
     dibujarTablaMateriales();
     actualizarSelectMateriales();
-}
-
-function dibujarTablaMateriales() {
-    const cuerpo = document.getElementById('cuerpoTablaMateriales');
-    cuerpo.innerHTML = '';
-    if (listaMateriales.length === 0) {
-        cuerpo.innerHTML = '<tr><td colspan="4" style="color:#666;">Sin materiales registrados</td></tr>';
-        return;
-    }
-    listaMateriales.forEach(m => {
-        cuerpo.innerHTML += `
-            <tr>
-                <td>${m.nombre}</td>
-                <td>${m.unidad}</td>
-                <td>$${m.precio_unitario.toFixed(2)}</td>
-                <td><button class="btn-quitar" onclick="eliminarMaterial(${m.id})">Eliminar</button></td>
-            </tr>`;
-    });
-}
-
-function actualizarSelectMateriales() {
-    const select = document.getElementById('materialSeleccionado');
-    select.innerHTML = '<option value="">Selecciona un material</option>';
-    listaMateriales.forEach(m => {
-        select.innerHTML += `<option value="${m.id}">${m.nombre} - $${m.precio_unitario.toFixed(2)}/${m.unidad}</option>`;
-    });
 }
 
 // === GESTIÓN DEL CARRITO Y COMPRAS ===
@@ -550,9 +537,22 @@ window.addEventListener('online', async () => {
         }
         comprasPendientes = [];
         localStorage.setItem('comprasPendientes', JSON.stringify([]));
-        await sincronizarEnSegundoPlano();
         alert('✅ Todos los datos sincronizados');
     }
+    // Vuelve a cargar todo para ver los cambios
+    if (supabase) {
+        const { data: matNube } = await supabase.from('materiales').select('*').order('nombre', {ascending:true});
+        if (matNube) listaMateriales = matNube;
+        const { data: comprasNube } = await supabase.from('compras').select('*').order('creado_en', {ascending:false});
+        if (comprasNube) listaCompras = comprasNube;
+        localStorage.setItem('materialesLocal', JSON.stringify(listaMateriales));
+        localStorage.setItem('comprasGuardadas', JSON.stringify(listaCompras));
+        dibujarTablaMateriales();
+        actualizarSelectMateriales();
+        dibujarHistorial();
+        dibujarTotales();
+    }
+    document.getElementById('estadoConexion').innerHTML = "✅ Todo actualizado";
 });
 
 window.addEventListener('offline', () => {
