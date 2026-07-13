@@ -107,7 +107,7 @@
 <div class="container">
     <img src="logo.png" alt="Logo Recicladora" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
-    <div class="aviso" id="estadoConexion">✅ Conectado | Guarda en nube y celular</div>
+    <div class="aviso" id="estadoConexion">✅ Cargando datos...</div>
 
     <div class="section">
         <h2>⚙️ Configurar Materiales</h2>
@@ -217,41 +217,90 @@ function generarClaveUnica(compra) {
     return `${compra.fecha||''}-${normalizarHora(compra.hora||'')}-${compra.total||0}-${JSON.stringify(compra.detalles||[])}`;
 }
 
-// === INICIO DE LA APLICACIÓN ===
+// === INICIO DE LA APLICACIÓN (CARGA PRIORITARIA DE LOCALES) ===
 document.addEventListener('DOMContentLoaded', async () => {
-    await cargarMateriales();
-    await cargarCompras();
-    actualizarSelectMateriales();
+    // ✅ PRIMERO CARGAMOS TUS DATOS GUARDADOS EN EL CELULAR (NUNCA FALLA)
+    cargarMaterialesLocales();
+    cargarComprasLocales();
+    document.getElementById('estadoConexion').innerHTML = "✅ Datos cargados | Sincronizando con nube...";
+    
+    // ✅ LUEGO SINCRONIZAMOS CON LA NUBE EN SEGUNDO PLANO
+    setTimeout(async () => {
+        await sincronizarDesdeNube();
+        document.getElementById('estadoConexion').innerHTML = navigator.onLine 
+            ? "✅ Conectado | Datos sincronizados" 
+            : "⚠️ Sin internet | Usando datos locales";
+    }, 800);
 });
 
-// === GESTIÓN DE MATERIALES ===
-async function cargarMateriales() {
-    try {
-        const { data, error } = await supabase.from('materiales').select('*').order('nombre', {ascending:true});
-        if (error) throw error;
-        listaMateriales = data || [];
-        localStorage.setItem('materialesLocal', JSON.stringify(listaMateriales));
-    } catch (err) {
-        console.log('Cargando materiales locales:', err);
-        listaMateriales = JSON.parse(localStorage.getItem('materialesLocal')) || [];
-        document.getElementById('estadoConexion').innerHTML = "⚠️ Sin conexión | Usando datos guardados";
-    }
+// === CARGA OBLIGATORIA DE DATOS LOCALES ===
+function cargarMaterialesLocales() {
+    const guardados = localStorage.getItem('materialesLocal');
+    listaMateriales = guardados ? JSON.parse(guardados) : [];
     dibujarTablaMateriales();
+    actualizarSelectMateriales();
 }
 
+function cargarComprasLocales() {
+    const guardadas = localStorage.getItem('comprasGuardadas');
+    listaCompras = guardadas ? JSON.parse(guardadas) : [];
+    dibujarHistorial();
+    dibujarTotales();
+}
+
+// === SINCRONIZACIÓN INTELIGENTE DESDE LA NUBE ===
+async function sincronizarDesdeNube() {
+    // 1. SINCRONIZAR MATERIALES
+    try {
+        const { data: matNube, error: errMat } = await supabase.from('materiales').select('*').order('nombre', {ascending:true});
+        if (!errMat && matNube?.length > 0) {
+            const mapa = new Map();
+            matNube.forEach(m => mapa.set(m.nombre.toLowerCase(), m));
+            listaMateriales.forEach(m => {
+                if (!mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m);
+            });
+            listaMateriales = Array.from(mapa.values());
+            localStorage.setItem('materialesLocal', JSON.stringify(listaMateriales));
+            dibujarTablaMateriales();
+            actualizarSelectMateriales();
+        }
+    } catch (err) {
+        console.log("Sin sincronización de materiales:", err);
+    }
+
+    // 2. SINCRONIZAR COMPRAS SIN DUPLICADOS
+    try {
+        const { data: comprasNube, error: errComp } = await supabase.from('compras').select('*').order('creado_en', {ascending:false});
+        if (!errComp && comprasNube?.length > 0) {
+            const clavesNube = new Set(comprasNube.map(c => generarClaveUnica(c)));
+            const comprasNuevas = listaCompras.filter(c => !clavesNube.has(generarClaveUnica(c)));
+            const todas = [...comprasNube, ...comprasNuevas];
+            const mapaFinal = new Map();
+            todas.forEach(c => mapaFinal.set(generarClaveUnica(c), c));
+            listaCompras = Array.from(mapaFinal.values());
+            localStorage.setItem('comprasGuardadas', JSON.stringify(listaCompras));
+            dibujarHistorial();
+            dibujarTotales();
+        }
+    } catch (err) {
+        console.log("Sin sincronización de compras:", err);
+    }
+}
+
+// === GESTIÓN DE MATERIALES ===
 async function guardarMaterial() {
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
     const precio = parseFloat(document.getElementById('precioUnitario').value);
     
     if (!nombre || isNaN(precio) || precio <= 0) {
-        alert('Por favor completa todos los datos correctamente');
+        alert('Completa todos los datos correctamente');
         return;
     }
 
     const existe = listaMateriales.find(m => m.nombre.toLowerCase() === nombre.toLowerCase());
     if (existe) {
-        alert('Este material ya está registrado');
+        alert('Este material ya existe');
         return;
     }
 
@@ -260,14 +309,13 @@ async function guardarMaterial() {
         const { data, error } = await supabase.from('materiales').insert([nuevo]).select();
         if (error) throw error;
         listaMateriales.push(data[0]);
-        alert('✅ Material guardado correctamente');
+        alert('✅ Guardado en nube y celular');
     } catch (err) {
-        console.log('Guardando localmente:', err);
         nuevo.id = Date.now();
         listaMateriales.push(nuevo);
         comprasPendientes.push({tipo:'material', datos:nuevo});
         localStorage.setItem('comprasPendientes', JSON.stringify(comprasPendientes));
-        alert('✅ Material guardado en el celular, se subirá al tener internet');
+        alert('✅ Guardado en celular, se subirá al tener internet');
     }
 
     localStorage.setItem('materialesLocal', JSON.stringify(listaMateriales));
@@ -293,6 +341,10 @@ async function eliminarMaterial(id) {
 function dibujarTablaMateriales() {
     const cuerpo = document.getElementById('cuerpoTablaMateriales');
     cuerpo.innerHTML = '';
+    if (listaMateriales.length === 0) {
+        cuerpo.innerHTML = '<tr><td colspan="4" style="color:#666;">Sin materiales registrados</td></tr>';
+        return;
+    }
     listaMateriales.forEach(m => {
         const fila = document.createElement('tr');
         fila.innerHTML = `
@@ -322,7 +374,7 @@ function agregarAlCarrito() {
     const cantidad = parseFloat(document.getElementById('pesoCantidad').value);
     
     if (!idMaterial || isNaN(cantidad) || cantidad <= 0) {
-        alert('Selecciona un material y escribe una cantidad válida');
+        alert('Selecciona un material y una cantidad válida');
         return;
     }
 
@@ -383,7 +435,7 @@ function quitarItemCarrito(id) {
 
 async function finalizarCompra() {
     if (carrito.length === 0) {
-        alert('Agrega materiales a la compra primero');
+        alert('Agrega materiales primero');
         return;
     }
 
@@ -402,7 +454,7 @@ async function finalizarCompra() {
     const claveUnica = generarClaveUnica(nuevaCompra);
     const existeYa = listaCompras.some(c => generarClaveUnica(c) === claveUnica);
     if (existeYa) {
-        alert('⚠️ Esta compra ya está registrada, no se guardará duplicada');
+        alert('⚠️ Esta compra ya está registrada');
         return;
     }
 
@@ -410,49 +462,19 @@ async function finalizarCompra() {
         const { data, error } = await supabase.from('compras').insert([nuevaCompra]).select();
         if (error) throw error;
         listaCompras.unshift(data[0]);
-        alert('✅ Compra guardada exitosamente en la nube');
+        alert('✅ Compra guardada correctamente');
     } catch (err) {
-        console.log('Guardando compra localmente:', err);
         nuevaCompra.id = Date.now();
         listaCompras.unshift(nuevaCompra);
         comprasPendientes.push({tipo:'compra', datos:nuevaCompra});
         localStorage.setItem('comprasPendientes', JSON.stringify(comprasPendientes));
-        alert('✅ Compra guardada en el celular, se sincronizará al tener internet');
+        alert('✅ Guardada en celular, se sincronizará al tener internet');
     }
 
     localStorage.setItem('comprasGuardadas', JSON.stringify(listaCompras));
     mostrarRecibo(nuevaCompra);
     carrito = [];
     dibujarCarrito();
-    dibujarHistorial();
-    dibujarTotales();
-}
-
-// === CARGA Y SINCRONIZACIÓN DE COMPRAS (SIN DUPLICADOS) ===
-async function cargarCompras() {
-    let comprasNube = [];
-    try {
-        const { data, error } = await supabase.from('compras').select('*').order('creado_en', {ascending:false});
-        if (!error) comprasNube = data || [];
-    } catch (err) {
-        console.log('Sin acceso a la nube:', err);
-        document.getElementById('estadoConexion').innerHTML = "⚠️ Sin conexión | Usando datos guardados";
-    }
-
-    const clavesNube = new Set(comprasNube.map(c => generarClaveUnica(c)));
-    const comprasLocales = JSON.parse(localStorage.getItem('comprasGuardadas')) || [];
-    const comprasValidas = comprasLocales.filter(c => !clavesNube.has(generarClaveUnica(c)));
-
-    const todasLasCompras = [...comprasNube, ...comprasValidas];
-    const mapaSinDuplicados = new Map();
-    todasLasCompras.forEach(compra => {
-        const clave = generarClaveUnica(compra);
-        if (!mapaSinDuplicados.has(clave)) mapaSinDuplicados.set(clave, compra);
-    });
-
-    listaCompras = Array.from(mapaSinDuplicados.values());
-    localStorage.setItem('comprasGuardadas', JSON.stringify(listaCompras));
-
     dibujarHistorial();
     dibujarTotales();
 }
@@ -524,7 +546,7 @@ function dibujarHistorial(listaPersonalizada = null) {
     }
 
     if (comprasMostrar.length === 0) {
-        contenedor.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No hay compras registradas en este período</p>';
+        contenedor.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No hay compras registradas</p>';
         return;
     }
 
@@ -559,7 +581,7 @@ function dibujarHistorial(listaPersonalizada = null) {
                 <tr>
                     <td>${compra.hora}</td>
                     <td>$${compra.total.toFixed(2)}</td>
-                    <td><button class="btn-cliente" onclick="mostrarRecibo(${JSON.stringify(compra).replace(/"/g, '&quot;')})">Ver Recibo</button></td>
+                    <td><button class="btn-cliente" onclick='mostrarRecibo(${JSON.stringify(compra).replace(/"/g, "&quot;")})'>Ver Recibo</button></td>
                 </tr>
             `;
         });
@@ -605,9 +627,9 @@ function dibujarTotales() {
     contenedor.innerHTML = html;
 }
 
-// === SINCRONIZAR DATOS PENDIENTES AL RECUPERAR INTERNET ===
+// === SINCRONIZACIÓN AUTOMÁTICA AL RECUPERAR INTERNET ===
 window.addEventListener('online', async () => {
-    document.getElementById('estadoConexion').innerHTML = "✅ Conectado | Sincronizando datos...";
+    document.getElementById('estadoConexion').innerHTML = "✅ Conectado | Sincronizando...";
     if (comprasPendientes.length > 0) {
         for (const pendiente of comprasPendientes) {
             try {
@@ -619,20 +641,19 @@ window.addEventListener('online', async () => {
                     if (!existe) await supabase.from('compras').insert([pendiente.datos]);
                 }
             } catch (err) {
-                console.log('No se pudo sincronizar:', err);
+                console.log('Error al sincronizar:', err);
             }
         }
         comprasPendientes = [];
         localStorage.setItem('comprasPendientes', JSON.stringify([]));
-        await cargarMateriales();
-        await cargarCompras();
-        alert('✅ Todos los datos se sincronizaron correctamente');
+        await sincronizarDesdeNube();
+        alert('✅ Todos los datos sincronizados');
     }
-    document.getElementById('estadoConexion').innerHTML = "✅ Conectado | Guarda en nube y celular";
+    document.getElementById('estadoConexion').innerHTML = "✅ Conectado | Datos actualizados";
 });
 
 window.addEventListener('offline', () => {
-    document.getElementById('estadoConexion').innerHTML = "⚠️ Sin conexión | Los datos se guardarán al recuperar internet";
+    document.getElementById('estadoConexion').innerHTML = "⚠️ Sin internet | Los datos se guardarán al reconectar";
 });
 </script>
 </body>
