@@ -239,19 +239,26 @@ let guardandoFactura = false;
 
 // 🆕 Función para normalizar la hora: siempre queda HH:MM sin segundos
 function normalizarHora(hora) {
-    if (!hora) return '00:00';
+    if (!hora || typeof hora !== 'string') return '00:00';
     const partes = hora.split(':');
-    const horas = partes[0].padStart(2, '0');
+    const horas = (partes[0] || '00').padStart(2, '0');
     const minutos = (partes[1] || '00').padStart(2, '0');
     return `${horas}:${minutos}`;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
-    actualizarEstadoConexion(navigator.onLine);
-    await cargarMateriales();
-    await cargarHistorialYTotales();
-    await sincronizarPendientes();
+    try {
+        supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
+        actualizarEstadoConexion(navigator.onLine);
+        await cargarMateriales();
+        await cargarHistorialYTotales();
+        await sincronizarPendientes();
+    } catch (error) {
+        console.error("Error al iniciar la app:", error);
+        alert("⚠️ Cargando datos locales...");
+        await cargarMateriales();
+        await cargarHistorialYTotales();
+    }
 });
 
 function actualizarEstadoConexion(conectado) {
@@ -305,11 +312,16 @@ window.addEventListener('offline', () => actualizarEstadoConexion(false));
 // ========== MATERIALES ==========
 async function cargarMateriales(){
     let datosNube = [];
-    try { const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true}); if(!error) datosNube = data; } catch {}
+    try { 
+        const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true}); 
+        if(!error && data) datosNube = data; 
+    } catch (e) { console.log("No se pudo cargar materiales de la nube, usando locales"); }
+    
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     const mapa = new Map();
-    datosNube.forEach(m => mapa.set(m.nombre.toLowerCase(), m));
-    datosLocales.forEach(m => { if(!mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m); });
+    datosNube.forEach(m => { if(m && m.nombre) mapa.set(m.nombre.toLowerCase(), m); });
+    datosLocales.forEach(m => { if(m && m.nombre && !mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m); });
+    
     const final = Array.from(mapa.values());
     localStorage.setItem('materialesLocales', JSON.stringify(final));
     actualizarTablaMateriales(final);
@@ -321,19 +333,29 @@ async function guardarMaterial(){
     const unidad = document.getElementById('unidadMedida').value;
     const precio = parseFloat(document.getElementById('precioUnitario').value);
     if(!nombre || isNaN(precio) || precio <=0) return alert('Datos incompletos');
+    
     const lista = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     if(lista.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) return alert('Ya existe ese material');
+    
     const nuevo = { nombre, unidad, precio };
     lista.push(nuevo);
     localStorage.setItem('materialesLocales', JSON.stringify(lista));
-    try {
-        const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
-        alert(!error ? '✅ Guardado en nube' : '⚠️ Guardado en celular');
-    } catch {
+    
+    if(navigator.onLine) {
+        try {
+            const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
+            alert(!error ? '✅ Guardado en nube' : '⚠️ Guardado en celular');
+        } catch {
+            datosPendientes.push({tipo:'material', datos:nuevo});
+            localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+            alert('⚠️ Guardado en celular');
+        }
+    } else {
         datosPendientes.push({tipo:'material', datos:nuevo});
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-        alert('⚠️ Guardado en celular');
+        alert('⚠️ Guardado en celular, se subirá luego');
     }
+    
     document.getElementById('nombreMaterial').value = '';
     document.getElementById('precioUnitario').value = '';
     cargarMateriales();
@@ -341,47 +363,88 @@ async function guardarMaterial(){
 
 function actualizarTablaMateriales(lista){
     const cuerpo = document.getElementById('cuerpoTabla');
-    cuerpo.innerHTML = lista.map((m, i) => `<tr><td>${m.nombre}</td><td>${m.unidad}</td><td>$${m.precio.toFixed(2)}</td><td><button class="btn-danger" onclick="eliminarMaterial(${m.id || 'l-'+i})">Eliminar</button></td></tr>`).join('');
+    if(!lista || lista.length === 0) {
+        cuerpo.innerHTML = '<tr><td colspan="4" style="color:#666;">Sin materiales guardados</td></tr>';
+        return;
+    }
+    cuerpo.innerHTML = lista.map((m, i) => {
+        if(!m || !m.nombre) return '';
+        return `<tr>
+            <td>${m.nombre}</td>
+            <td>${m.unidad || 'Libra'}</td>
+            <td>$${(m.precio || 0).toFixed(2)}</td>
+            <td><button class="btn-danger" onclick="eliminarMaterial(${m.id || `'l-${i}'`})">Eliminar</button></td>
+        </tr>`;
+    }).join('');
 }
 
 async function eliminarMaterial(id){
     if(String(id).startsWith('l-')) {
         let l = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-        l.splice(Number(id.split('-')[1]),1);
-        localStorage.setItem('materialesLocales', JSON.stringify(l));
-        cargarMateriales();
+        const indice = Number(id.split('-')[1]);
+        if(indice >=0 && indice < l.length) {
+            l.splice(indice,1);
+            localStorage.setItem('materialesLocales', JSON.stringify(l));
+            cargarMateriales();
+        }
         return;
     }
-    try { await supabaseCliente.from('materiales').delete().eq('id', id); cargarMateriales(); }
-    catch { alert('Se eliminará cuando haya internet'); }
+    try { 
+        await supabaseCliente.from('materiales').delete().eq('id', id); 
+        cargarMateriales(); 
+    } catch { 
+        alert('Se eliminará cuando haya internet'); 
+    }
 }
 
 function actualizarSelectMateriales(lista){
-    document.getElementById('materialSeleccionado').innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio.toFixed(2)}/${m.unidad}</option>`).join('');
+    const select = document.getElementById('materialSeleccionado');
+    if(!lista || lista.length === 0) {
+        select.innerHTML = '<option value="">Carga materiales primero</option>';
+        return;
+    }
+    select.innerHTML = lista.map(m => {
+        if(!m || !m.nombre) return '';
+        return `<option value="${m.nombre}">${m.nombre} - $${(m.precio||0).toFixed(2)}/${m.unidad||'Libra'}</option>`;
+    }).join('');
 }
 
 // ========== COMPRAS ==========
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
+    if(!nombre) return alert('Selecciona un material');
     if(!cantidad || cantidad <=0) return alert('Escribe el peso recibido');
 
     const locales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    let mat = locales.find(m => m.nombre === nombre);
+    let mat = locales.find(m => m && m.nombre === nombre);
     
     if(!mat && navigator.onLine) {
-        try { const {data} = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).single(); mat = data; }
-        catch {}
+        try { 
+            const {data} = await supabaseCliente.from('materiales').select('*').eq('nombre', nombre).limit(1).single(); 
+            mat = data; 
+        } catch {}
     }
 
     if(!mat) return alert('Material no encontrado');
 
-    carrito.push({ nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: mat.precio, total: cantidad * mat.precio });
+    carrito.push({ 
+        nombre: mat.nombre, 
+        cantidad, 
+        unidad: mat.unidad || 'Libra', 
+        precio: mat.precio, 
+        total: cantidad * mat.precio 
+    });
     actualizarCarrito();
     document.getElementById('cantidadRecibida').value = '';
 }
 
-function quitarDelCarrito(i){ carrito.splice(i,1); actualizarCarrito(); }
+function quitarDelCarrito(i){ 
+    if(i >=0 && i < carrito.length) {
+        carrito.splice(i,1); 
+        actualizarCarrito(); 
+    }
+}
 
 function actualizarCarrito(){
     const lista = document.getElementById('listaCompra');
@@ -408,13 +471,15 @@ async function generarFacturas(){
     // 🆕 Siempre guardamos la hora en formato HH:MM sin segundos
     const hora = normalizarHora(ahora.toLocaleTimeString('es-EC', {hour12: false}));
     const creado_el = new Date().toISOString();
-    facturaActual = { fecha, hora, total_general: totalGeneral, detalles: [...carrito], creado_el };
+    facturaActual = { fecha, hora, total_general: totalGeneral, detalles: JSON.parse(JSON.stringify(carrito)), creado_el };
 
     const claveUnica = `${fecha}-${hora}-${totalGeneral}-${JSON.stringify(facturaActual.detalles)}`;
 
+    // Revisar duplicado local
     const existeLocal = facturasLocales.some(f => {
+        if(!f) return false;
         f.hora = normalizarHora(f.hora);
-        return `${f.fecha}-${f.hora}-${f.total_general}-${JSON.stringify(f.detalles)}` === claveUnica;
+        return `${f.fecha||''}-${f.hora||''}-${f.total_general||0}-${JSON.stringify(f.detalles||[])}` === claveUnica;
     });
     if(!existeLocal) {
         facturasLocales.push(facturaActual);
@@ -422,22 +487,26 @@ async function generarFacturas(){
     }
 
     let subidoBien = false;
-    try {
-        const { data: existentes } = await supabaseCliente.from('facturas').select('*').eq('fecha', fecha);
-        const existeNube = existentes?.some(f => {
-            f.hora = normalizarHora(f.hora);
-            return `${f.fecha}-${f.hora}-${f.total_general}-${JSON.stringify(f.detalles)}` === claveUnica;
-        });
-        if(!existeNube) {
-            const { error } = await supabaseCliente.from('facturas').insert([facturaActual]);
-            if(!error) subidoBien = true;
-        } else subidoBien = true;
-    } catch {}
+    if(navigator.onLine) {
+        try {
+            const { data: existentes } = await supabaseCliente.from('facturas').select('*').eq('fecha', fecha);
+            const existeNube = existentes?.some(f => {
+                if(!f) return false;
+                f.hora = normalizarHora(f.hora);
+                return `${f.fecha||''}-${f.hora||''}-${f.total_general||0}-${JSON.stringify(f.detalles||[])}` === claveUnica;
+            });
+            if(!existeNube) {
+                const { error } = await supabaseCliente.from('facturas').insert([facturaActual]);
+                if(!error) subidoBien = true;
+            } else subidoBien = true;
+        } catch {}
+    }
 
     if(!subidoBien) {
         const yaPendiente = datosPendientes.some(p => {
+            if(!p || !p.datos) return false;
             p.datos.hora = normalizarHora(p.datos.hora);
-            return `${p.datos.fecha}-${p.datos.hora}-${p.datos.total_general}-${JSON.stringify(p.datos.detalles)}` === claveUnica;
+            return `${p.datos.fecha||''}-${p.datos.hora||''}-${p.datos.total_general||0}-${JSON.stringify(p.datos.detalles||[])}` === claveUnica;
         });
         if(!yaPendiente) {
             datosPendientes.push({tipo:'factura', datos:facturaActual});
@@ -461,6 +530,7 @@ function mostrarCliente(){
     if(!facturaActual) return;
     let agrupado = {};
     facturaActual.detalles.forEach(item => {
+        if(!item) return;
         if(!agrupado[item.nombre]) agrupado[item.nombre] = { ...item, cantidad:0, total:0 };
         agrupado[item.nombre].cantidad += item.cantidad;
         agrupado[item.nombre].total += item.total;
@@ -506,6 +576,7 @@ function cerrarVentana(){
 
 // ========== ELIMINAR TOTALES ==========
 function eliminarTotalMaterialPorDia(fecha, nombreMaterial){
+    if(!fecha || !nombreMaterial) return;
     if(!confirm(`¿Segura que quieres eliminar "${nombreMaterial}" del día ${fecha}?`)) return;
     if(totalesPorDia[fecha] && totalesPorDia[fecha][nombreMaterial]){
         delete totalesPorDia[fecha][nombreMaterial];
@@ -518,6 +589,7 @@ function eliminarTotalMaterialPorDia(fecha, nombreMaterial){
 }
 
 function reiniciarMaterialNuevoPeriodo(nombreMaterial){
+    if(!nombreMaterial) return;
     if(!confirm(`¿Segura que quieres borrar TODOS los registros de "${nombreMaterial}"?`)) return;
     Object.keys(totalesPorDia).forEach(fecha => {
         if(totalesPorDia[fecha][nombreMaterial]) delete totalesPorDia[fecha][nombreMaterial];
@@ -547,16 +619,24 @@ function alternarVerHistorial(){
 // ========== HISTORIAL Y TOTALES ==========
 async function cargarHistorialYTotales(){
     let facturasNube = [];
-    try { 
-        const { data, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false}); 
-        if(!error) facturasNube = data || []; 
-    } catch {}
+    if(navigator.onLine) {
+        try { 
+            const { data, error } = await supabaseCliente.from('facturas').select('*').order('creado_el', {ascending: false}); 
+            if(!error && data) facturasNube = data; 
+        } catch (e) { console.log("No se pudo cargar facturas de la nube"); }
+    }
     
     // 🆕 Normalizamos todas las horas antes de juntar y quitar duplicados
-    const todas = [...facturasNube, ...facturasLocales].map(f => {
+    const todasLocales = (facturasLocales || []).filter(f => f).map(f => {
         f.hora = normalizarHora(f.hora);
         return f;
     });
+    const todasNube = facturasNube.filter(f => f).map(f => {
+        f.hora = normalizarHora(f.hora);
+        return f;
+    });
+
+    const todas = [...todasNube, ...todasLocales];
     
     const mapaUnico = new Map();
     todas.forEach(f => {
@@ -572,22 +652,21 @@ function procesarFacturas(facturas){
     totalesPorDia = {};
     
     facturas.forEach(f => {
-        const fecha = f.fecha;
-        if(!fecha) return;
-        if(!totalesPorDia[fecha]) totalesPorDia[fecha] = {};
+        if(!f || !f.fecha) return;
+        if(!totalesPorDia[f.fecha]) totalesPorDia[f.fecha] = {};
         if(!f.detalles || !Array.isArray(f.detalles)) return;
         
         f.detalles.forEach(item => {
-            if(!item.nombre) return;
-            if(!totalesPorDia[fecha][item.nombre]) {
-                totalesPorDia[fecha][item.nombre] = {
+            if(!item || !item.nombre) return;
+            if(!totalesPorDia[f.fecha][item.nombre]) {
+                totalesPorDia[f.fecha][item.nombre] = {
                     cantidadTotal: 0, 
                     unidad: item.unidad || 'Libra', 
                     montoTotal: 0
                 };
             }
-            totalesPorDia[fecha][item.nombre].cantidadTotal += Number(item.cantidad || 0);
-            totalesPorDia[fecha][item.nombre].montoTotal += Number(item.total || 0);
+            totalesPorDia[f.fecha][item.nombre].cantidadTotal += Number(item.cantidad || 0);
+            totalesPorDia[f.fecha][item.nombre].montoTotal += Number(item.total || 0);
         });
     });
 
@@ -599,10 +678,17 @@ function procesarFacturas(facturas){
 
 function actualizarVistaHistorial(facturas){
     const listaHistorial = document.getElementById('listaHistorial');
-    if(facturas.length === 0){ listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas aún</p>`; return; }
+    if(!facturas || facturas.length === 0){ 
+        listaHistorial.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras guardadas aún</p>`; 
+        return; 
+    }
     
     const agrupado = {};
-    facturas.forEach(f => { if(!agrupado[f.fecha]) agrupado[f.fecha] = []; agrupado[f.fecha].push(f); });
+    facturas.forEach(f => { 
+        if(!f || !f.fecha) return;
+        if(!agrupado[f.fecha]) agrupado[f.fecha] = []; 
+        agrupado[f.fecha].push(f); 
+    });
     
     const fechasOrdenadas = Object.keys(agrupado).sort((a, b) => {
         const [dA, mA, yA] = a.split('/').map(Number);
@@ -634,14 +720,15 @@ function cambiarVistaTotales(m){ vistaAgrupada = m; actualizarVistaTotalesPorDia
 function buscarPorFecha(){
     const busqueda = document.getElementById('fechaBusqueda').value.trim();
     if(!busqueda) return cargarHistorialYTotales();
-    const filtradas = todasLasFacturas.filter(f => f.fecha && f.fecha.includes(busqueda));
+    const filtradas = todasLasFacturas.filter(f => f && f.fecha && f.fecha.includes(busqueda));
     actualizarVistaHistorial(filtradas);
 }
 function verTodosLosDias(){ document.getElementById('fechaBusqueda').value = ''; cargarHistorialYTotales(); }
 
 function verFacturaGuardada(f,t){
     facturaActual = f;
-    t==="cliente"?mostrarCliente():mostrarDetallada();
+    if(t==="cliente") mostrarCliente();
+    else mostrarDetallada();
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
     document.getElementById('btnVerCliente').style.display = 'inline-block';
     document.getElementById("ventanaFactura").style.display = "flex";
@@ -655,7 +742,10 @@ function actualizarVistaTotalesPorDia(){
         return new Date(yB, mB-1, dB) - new Date(yA, mA-1, dA);
     });
     
-    if(fechas.length === 0){ lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>`; return; }
+    if(fechas.length === 0){ 
+        lista.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras registradas aún</p>`; 
+        return; 
+    }
     
     let html = `
     <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
@@ -668,38 +758,11 @@ function actualizarVistaTotalesPorDia(){
         fechas.forEach(fecha => {
             if(!verTodosLosDiasActivo && fecha !== fechaHoy) return;
             const mats = Object.entries(totalesPorDia[fecha]);
-            const totalD = Object.values(totalesPorDia[fecha]).reduce((s,d)=>s+d.montoTotal,0);
+            const totalD = Object.values(totalesPorDia[fecha]).reduce((s,d)=>s + (d.montoTotal||0), 0);
             totalG += totalD;
             html += `
             <div class="item-fecha">
                 <div class="titulo-fecha" onclick="alternarFecha(this)">
                     <span>📅 Día: ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span><span class="flecha">▼</span>
                 </div>
-                <div class="contenido-fechas">
-                    <table class="tabla-resumen">
-                        <tr><th>Material</th><th>Peso Total</th><th>Monto Total</th><th>Acción</th></tr>
-                        ${mats.map(([n,d])=>`<tr><td>${n}</td><td>${d.cantidadTotal.toFixed(1)} ${d.unidad}</td><td>$${d.montoTotal.toFixed(2)}</td><td><button class="btn-reiniciar-individual" onclick="eliminarTotalMaterialPorDia('${fecha}','${n}')">🔄 Eliminar</button></td></tr>`).join('')}
-                        <tr class="fila-total-dia"><td colspan="3">💵 Total del día</td><td>$${totalD.toFixed(2)}</td></tr>
-                    </table>
-                </div>
-            </div>`;
-        });
-        html += `<table class="tabla-resumen"><tr class="fila-total-general"><td colspan="4" style="text-align:center;">💰 TOTAL GENERAL: $${totalG.toFixed(2)}</td></tr></table>`;
-    } else {
-        const acu = {}; let totalG =0;
-        fechas.forEach(f => {
-            if(!verTodosLosDiasActivo && f !== fechaHoy) return;
-            Object.entries(totalesPorDia[f]).forEach(([n,d])=>{
-                if(!acu[n]) acu[n] = {cantidad:0, unidad:d.unidad, monto:0};
-                acu[n].cantidad += d.cantidadTotal; acu[n].monto += d.montoTotal; totalG += d.montoTotal;
-            });
-        });
-        html += `
-        <div class="item-fecha" style="border-color:#42a5f5;">
-            <div class="titulo-fecha" style="background:#e3f2fd; color:#0d47a1;">
-                <span>📊 TOTALES ACUMULADOS ${!verTodosLosDiasActivo ? '(Solo Hoy)' : '(Todos los días)'}</span>
-            </div>
-            <div class="contenido-fechas abierto">
-                <table class="tabla-resumen">
-                    <tr><th>Material</th><th>Peso Total Sumado</th><th>Monto Total Sumado</th><th>Acción</th></tr>
-                    ${Object.entries(acu).map(([n,d])=>`<tr><td>${n}</td><td>${d.cantidad.toFixed(1)} ${d.unidad}</td><td>$${d.monto.toFixed(2)}</td><td><button class="btn-rein
+                <div class="contenido-f
