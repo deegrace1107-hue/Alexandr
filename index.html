@@ -210,7 +210,6 @@ window.addEventListener('offline', () => actualizarEstadoConexion(false));
 // ========== MATERIALES ==========
 async function cargarMateriales(){
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    // ✅ ASEGURAMOS QUE CADA PRECIO SE LEA COMO NÚMERO EXACTO
     listaMateriales = datosLocales.map(m => ({
         ...m,
         precio_unitario: Number(m.precio_unitario)
@@ -230,14 +229,15 @@ async function cargarMateriales(){
     
     listaMateriales = Array.from(mapa.values()).map(m => ({
         ...m,
-        precio_unitario: Number(m.precio_unitario) // ✅ IGUALAMENTE AL CARGAR DE LA NUBE
+        precio_unitario: Number(m.precio_unitario)
     }));
     localStorage.setItem('materialesLocales', JSON.stringify(listaMateriales));
     
     actualizarTablaMateriales(listaMateriales);
     actualizarSelectMateriales(listaMateriales);
 }
-    async function guardarMaterial(){
+
+async function guardarMaterial(){
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
     const valorEntrada = document.getElementById('precioUnitario').value;
@@ -257,7 +257,7 @@ async function cargarMateriales(){
     
     try {
         const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
-        alert(!error ? '✅ Material guardado perfectamente' : '⚠️ Guardado en el dispositivo, se subirá al tener internet');
+        alert(!error ? '✅ Material guardado perfectamente sin redondear' : '⚠️ Guardado en el dispositivo, se subirá al tener internet');
     } catch {
         datosPendientes.push({tipo:'material', datos:nuevo});
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
@@ -270,14 +270,13 @@ async function cargarMateriales(){
     actualizarSelectMateriales(listaMateriales);
 }
 
-// ✅ YA CORREGIDO: MUESTRA PRECIO EXACTO DE 3 DECIMALES SIN REDONDEAR
 function actualizarTablaMateriales(lista){
     const cuerpo = document.getElementById('cuerpoTabla');
     if(lista.length === 0) {
         cuerpo.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#666;">No hay materiales aún</td></tr>`;
         return;
     }
-    cuerpo.innerHTML = lista.map((m, i) => `<tr><td>${m.nombre}</td><td>${m.unidad}</td><td>$${m.precio_unitario.toFixed(3)}</td><td><button class="btn-danger" onclick="eliminarMaterial(${m.id || `'l-${i}'`})">Eliminar</button></td></tr>`).join('');
+    cuerpo.innerHTML = lista.map((m, i) => `<tr><td>${m.nombre}</td><td>${m.unidad}</td><td>$${Number(m.precio_unitario).toFixed(3)}</td><td><button class="btn-danger" onclick="eliminarMaterial(${m.id || `'l-${i}'`})">Eliminar</button></td></tr>`).join('');
 }
 
 async function eliminarMaterial(id){
@@ -306,11 +305,10 @@ function actualizarSelectMateriales(lista){
         select.innerHTML = `<option value="">Agregue materiales primero</option>`;
         return;
     }
-    select.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${m.precio_unitario.toFixed(3)}/${m.unidad}</option>`).join('');
+    select.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${Number(m.precio_unitario).toFixed(3)}/${m.unidad}</option>`).join('');
 }
 
 // ========== COMPRAS ==========
-// ✅ YA CORREGIDO: CALCULA SIN REDONDEAR EL PRECIO UNITARIO ANTES DE MULTIPLICAR
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
@@ -336,7 +334,6 @@ async function agregarAlCarrito(){
 
 function quitarDelCarrito(i){ carrito.splice(i,1); actualizarCarrito(); }
 
-// ✅ YA CORREGIDO: MUESTRA VALORES EXACTOS SIN REDONDEO PREMATURO
 function actualizarCarrito(){
     const lista = document.getElementById('listaCompra');
     if(carrito.length === 0){
