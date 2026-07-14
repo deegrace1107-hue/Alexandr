@@ -210,7 +210,11 @@ window.addEventListener('offline', () => actualizarEstadoConexion(false));
 // ========== MATERIALES ==========
 async function cargarMateriales(){
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
-    listaMateriales = datosLocales;
+    // ✅ ASEGURAMOS QUE CADA PRECIO SE LEA COMO NÚMERO EXACTO
+    listaMateriales = datosLocales.map(m => ({
+        ...m,
+        precio_unitario: Number(m.precio_unitario)
+    }));
     actualizarTablaMateriales(listaMateriales);
     actualizarSelectMateriales(listaMateriales);
 
@@ -224,38 +228,12 @@ async function cargarMateriales(){
     datosNube.forEach(m => mapa.set(m.nombre.toLowerCase(), m));
     datosLocales.forEach(m => { if(!mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m); });
     
-    listaMateriales = Array.from(mapa.values());
+    listaMateriales = Array.from(mapa.values()).map(m => ({
+        ...m,
+        precio_unitario: Number(m.precio_unitario) // ✅ IGUALAMENTE AL CARGAR DE LA NUBE
+    }));
     localStorage.setItem('materialesLocales', JSON.stringify(listaMateriales));
     
-    actualizarTablaMateriales(listaMateriales);
-    actualizarSelectMateriales(listaMateriales);
-}
-
-async function guardarMaterial(){
-    const nombre = document.getElementById('nombreMaterial').value.trim();
-    const unidad = document.getElementById('unidadMedida').value;
-    const precio = parseFloat(document.getElementById('precioUnitario').value);
-    if(!nombre || isNaN(precio) || precio <=0) return alert('Completa todos los datos correctamente');
-    
-    if(listaMateriales.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) {
-        return alert('⚠️ Este material ya existe');
-    }
-    
-    const nuevo = { nombre, unidad, precio_unitario: precio };
-    listaMateriales.push(nuevo);
-    localStorage.setItem('materialesLocales', JSON.stringify(listaMateriales));
-    
-    try {
-        const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
-        alert(!error ? '✅ Material guardado correctamente' : '⚠️ Guardado en su dispositivo');
-    } catch {
-        datosPendientes.push({tipo:'material', datos:nuevo});
-        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-        alert('⚠️ Guardado en su dispositivo, se subirá al conectarse');
-    }
-    
-    document.getElementById('nombreMaterial').value = '';
-    document.getElementById('precioUnitario').value = '';
     actualizarTablaMateriales(listaMateriales);
     actualizarSelectMateriales(listaMateriales);
 }
