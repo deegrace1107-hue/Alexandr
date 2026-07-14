@@ -209,20 +209,17 @@ window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
 // ========== MATERIALES ==========
 async function cargarMateriales(){
-    // ✅ PRIMERO CARGA LO GUARDADO EN EL TELÉFONO (SIN INTERNET)
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     listaMateriales = datosLocales;
     actualizarTablaMateriales(listaMateriales);
     actualizarSelectMateriales(listaMateriales);
 
-    // ✅ LUEGO ACTUALIZA DESDE LA NUBE SI HAY SEÑAL
     let datosNube = [];
     try { 
         const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true}); 
         if(!error) datosNube = data || [];
     } catch {}
 
-    // ✅ UNE Y GUARDA SIN DUPLICAR
     const mapa = new Map();
     datosNube.forEach(m => mapa.set(m.nombre.toLowerCase(), m));
     datosLocales.forEach(m => { if(!mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m); });
@@ -311,7 +308,9 @@ async function agregarAlCarrito(){
     let mat = listaMateriales.find(m => m.nombre === nombre);
     if(!mat) return alert('Material no encontrado');
 
-    carrito.push({ nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: mat.precio_unitario, subtotal: cantidad * mat.precio_unitario });
+    const precioExacto = mat.precio_unitario;
+    const subtotalExacto = cantidad * precioExacto;
+    carrito.push({ nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: precioExacto, subtotal: subtotalExacto });
     actualizarCarrito();
     document.getElementById('cantidadRecibida').value = '';
 }
@@ -325,7 +324,7 @@ function actualizarCarrito(){
     } else {
         lista.innerHTML = `<table class="tabla-resumen">
             <tr><th>Material</th><th>Peso</th><th>Precio U.</th><th>Subtotal</th><th>Quitar</th></tr>
-            ${carrito.map((item,i) => `<tr><td>${item.nombre}</td><td>${item.cantidad} ${item.unidad}</td><td>$${item.precio.toFixed(2)}</td><td>$${item.subtotal.toFixed(2)}</td><td><button class="btn-quitar" onclick="quitarDelCarrito(${i})">❌</button></td></tr>`).join('')}
+            ${carrito.map((item,i) => `<tr><td>${item.nombre}</td><td>${item.cantidad} ${item.unidad}</td><td>$${item.precio.toFixed(3)}</td><td>$${item.subtotal.toFixed(2)}</td><td><button class="btn-quitar" onclick="quitarDelCarrito(${i})">❌</button></td></tr>`).join('')}
         </table>`;
     }
     const total = carrito.reduce((s,i) => s+i.subtotal, 0);
@@ -391,11 +390,11 @@ function mostrarCliente(){
         <h2 style="text-align:center; font-size:18px;">RECIBO DE PAGO</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p><strong>Fecha:</strong> ${facturaActual.fecha} | <strong>Hora:</strong> ${facturaActual.hora}</p>
-        <p>Recicladora Alexander | Manta - Manabí</p>
+        <p>Recicladora Alexander | Rocafuerte - Manabí</p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
         <table class="tabla-factura">
             <tr><th>Material</th><th>Peso Total</th><th>Precio U.</th><th>Total</th></tr>
-            ${lista.map(i => `<tr><td>${i.nombre}</td><td>${i.cantidad.toFixed(1)} ${i.unidad}</td><td>$${i.precio.toFixed(2)}</td><td>$${i.subtotal.toFixed(2)}</td></tr>`).join('')}
+            ${lista.map(i => `<tr><td>${i.nombre}</td><td>${i.cantidad.toFixed(1)} ${i.unidad}</td><td>$${i.precio.toFixed(3)}</td><td>$${i.subtotal.toFixed(2)}</td></tr>`).join('')}
         </table>
         <div class="total-final">Total a Pagar: $${facturaActual.total.toFixed(2)}</div>
     `;
@@ -408,10 +407,11 @@ function mostrarDetallada(){
         <h2 style="text-align:center; font-size:18px;">FACTURA DETALLADA</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p><strong>Fecha:</strong> ${facturaActual.fecha} | <strong>Hora:</strong> ${facturaActual.hora}</p>
+        <p>Recicladora Alexander | Rocafuerte - Manabí</p>
         <hr style="border:1px dashed #ccc; margin:14px 0;">
         <table class="tabla-factura">
             <tr><th>Material</th><th>Peso</th><th>Precio U.</th><th>Subtotal</th></tr>
-            ${facturaActual.detalles.map(i => `<tr><td>${i.nombre}</td><td>${i.cantidad} ${i.unidad}</td><td>$${i.precio.toFixed(2)}</td><td>$${i.subtotal.toFixed(2)}</td></tr>`).join('')}
+            ${facturaActual.detalles.map(i => `<tr><td>${i.nombre}</td><td>${i.cantidad} ${i.unidad}</td><td>$${i.precio.toFixed(3)}</td><td>$${i.subtotal.toFixed(2)}</td></tr>`).join('')}
         </table>
         <div class="total-final">Total: $${facturaActual.total.toFixed(2)}</div>
     `;
@@ -448,24 +448,24 @@ function buscarPorFecha(){
 }
 
 async function cargarHistorialYTotales(){
-    // ✅ PRIMERO CARGA LO GUARDADO EN EL TELÉFONO (ABRE AL INSTANTE SIN INTERNET)
-    const comprasLocales = JSON.parse(localStorage.getItem('comprasLocales')) || [];
-    todasLasCompras = comprasLocales;
-    actualizarVistas();
-
-    // ✅ LUEGO ACTUALIZA DESDE LA NUBE SI HAY CONEXIÓN
     let comprasNube = [];
+    let comprasLocales = JSON.parse(localStorage.getItem('comprasLocales')) || [];
+
     try { 
         const { data, error } = await supabaseCliente.from('compras').select('*').order('creado_en', {ascending: false}); 
         if(!error) comprasNube = data || []; 
-    } catch {}
+    } catch {
+        todasLasCompras = comprasLocales;
+        actualizarVistas();
+        return;
+    }
 
-    // ✅ UNE Y ELIMINA DUPLICADOS, GUARDA LA VERSIÓN COMPLETA
     const mapaUnico = new Map();
     comprasNube.forEach(c => {
         const clave = generarClaveUnica(c);
-        if(!mapaUnico.has(clave)) mapaUnico.set(clave, c);
+        mapaUnico.set(clave, c);
     });
+
     comprasLocales.forEach(c => {
         const clave = generarClaveUnica(c);
         if(!mapaUnico.has(clave)) mapaUnico.set(clave, c);
@@ -535,10 +535,8 @@ function dibujarHistorial(listaPersonalizada = null){
         </div>`).join('');
 }
 
-// 🔹 VARIABLE PARA CAMBIAR MODO DE VISTA
-let modoVista = 'dias'; // 'dias' = por día, 'acumulado' = total general
+let modoVista = 'dias';
 
-// 🔹 FUNCIÓN PRINCIPAL DE TOTALES
 function dibujarTotales(listaPersonalizada = null){
     const lista = listaPersonalizada || todasLasCompras;
     const contenedor = document.getElementById('listaTotalesPorDia');
@@ -549,16 +547,12 @@ function dibujarTotales(listaPersonalizada = null){
         return;
     }
 
-    // 🔹 AGREGAMOS LOS BOTONES DE CAMBIO DE VISTA (COMO EN TU IMAGEN)
     let htmlFinal = `
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
         <button class="${modoVista==='dias'?'':'btn-ver-todos'}" style="${modoVista==='dias'?'background:#2e7d32;':'background:#e0e0e0; color:#333;'}" onclick="cambiarModoVista('dias')">📅 Ver por Días</button>
         <button class="${modoVista==='acumulado'?'':'btn-ver-todos'}" style="${modoVista==='acumulado'?'background:#7b1fa2;':'background:#e0e0e0; color:#333;'}" onclick="cambiarModoVista('acumulado')">📊 Ver Total Acumulado</button>
     </div>`;
 
-    // ==============================================
-    // 🔹 MODO 1: VER POR DÍAS (IGUAL A TU EJEMPLO)
-    // ==============================================
     if(modoVista === 'dias') {
         const agrupadasPorFecha = {};
         mostrar.forEach(c => { 
@@ -579,7 +573,6 @@ function dibujarTotales(listaPersonalizada = null){
             const totalDia = comprasDelDia.reduce((s,c) => s + Number(c.total || 0), 0);
             totalGeneral += totalDia;
 
-            // Agrupamos materiales DENTRO DEL DÍA (como en tu foto)
             const materialesDelDia = {};
             comprasDelDia.forEach(compra => {
                 if(compra.detalles) {
@@ -606,7 +599,7 @@ function dibujarTotales(listaPersonalizada = null){
                     <span>📅 Día: ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span>
                     <span class="flecha">▼</span>
                 </div>
-                <div class="contenido-fechas ${fecha === fechaHoy ? '' : ''}">
+                <div class="contenido-fechas">
                     <table class="tabla-resumen">
                         <tr style="background:#e8f5e9;">
                             <th>Material</th>
@@ -633,9 +626,6 @@ function dibujarTotales(listaPersonalizada = null){
         htmlFinal += `<div style="text-align:right; font-weight:bold; font-size:15px; margin-top:10px;">💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}</div>`;
     }
 
-    // ==============================================
-    // 🔹 MODO 2: VER TOTAL ACUMULADO (TODOS LOS DÍAS)
-    // ==============================================
     if(modoVista === 'acumulado') {
         const desgloseGlobal = {};
         mostrar.forEach(compra => {
@@ -686,13 +676,11 @@ function dibujarTotales(listaPersonalizada = null){
     contenedor.innerHTML = htmlFinal;
 }
 
-// 🔹 CAMBIAR ENTRE MODOS DE VISTA
 function cambiarModoVista(tipo) {
     modoVista = tipo;
     dibujarTotales();
 }
 
-// 🔹 ELIMINAR UN MATERIAL DE UN DÍA ESPECÍFICO (COMO EN TU FOTO)
 async function eliminarMaterialDelDia(fecha, nombreMaterial) {
     if(!confirm(`¿Eliminar «${nombreMaterial}» del día ${fecha}?\nLo quitarás solo de este día, se guarda como despachado.`)) return;
 
@@ -702,7 +690,6 @@ async function eliminarMaterialDelDia(fecha, nombreMaterial) {
         }
     });
 
-    // Quitamos compras que queden vacías
     todasLasCompras = todasLasCompras.filter(c => c.detalles && c.detalles.length > 0);
 
     localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
@@ -712,7 +699,6 @@ async function eliminarMaterialDelDia(fecha, nombreMaterial) {
     actualizarVistas();
 }
 
-// 🔹 REINICIAR UN MATERIAL EN TODO EL ACUMULADO (PARA LIQUIDAR)
 async function reiniciarMaterialAcumulado(nombreMaterial) {
     if(!confirm(`¿Seguro quieres liquidar y reiniciar «${nombreMaterial}»?\nSe borrará todo su acumulado para empezar de cero.`)) return;
 
@@ -730,22 +716,18 @@ async function reiniciarMaterialAcumulado(nombreMaterial) {
     alert(`✅ «${nombreMaterial}» liquidado y reiniciado correctamente`);
     actualizarVistas();
 }
-// 🔹 FUNCIÓN PARA DESPACHAR Y REINICIAR MATERIAL
+
 async function despacharMaterial(nombreMaterial){
     if(!confirm(`¿Seguro quieres reiniciar el total de ${nombreMaterial}?\nSe guardará como despachado y empezarás de cero con este material.`)) return;
 
-    // Marcamos las compras de este material como despachadas
     todasLasCompras.forEach(compra => {
         compra.detalles = compra.detalles.filter(item => item.nombre !== nombreMaterial);
     });
 
-    // Quitamos compras vacías
     todasLasCompras = todasLasCompras.filter(c => c.detalles.length > 0);
 
-    // Guardamos los cambios
     localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
 
-    // Sincronizamos a la nube si hay internet
     if(navigator.onLine) {
         try {
             await supabaseCliente.from('compras').upsert(todasLasCompras);
@@ -757,6 +739,7 @@ async function despacharMaterial(nombreMaterial){
     alert(`✅ ${nombreMaterial} se ha despachado correctamente, listo para empezar de cero`);
     actualizarVistas();
 }
+
 function verCompraGuardada(c,t){
     facturaActual = c;
     t==="cliente"?mostrarCliente():mostrarDetallada();
