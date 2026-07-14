@@ -260,6 +260,7 @@ async function guardarMaterial(){
     actualizarSelectMateriales(listaMateriales);
 }
 
+// ✅ YA CORREGIDO: MUESTRA PRECIO EXACTO DE 3 DECIMALES SIN REDONDEAR
 function actualizarTablaMateriales(lista){
     const cuerpo = document.getElementById('cuerpoTabla');
     if(lista.length === 0) {
@@ -299,6 +300,7 @@ function actualizarSelectMateriales(lista){
 }
 
 // ========== COMPRAS ==========
+// ✅ YA CORREGIDO: CALCULA SIN REDONDEAR EL PRECIO UNITARIO ANTES DE MULTIPLICAR
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
@@ -308,15 +310,23 @@ async function agregarAlCarrito(){
     let mat = listaMateriales.find(m => m.nombre === nombre);
     if(!mat) return alert('Material no encontrado');
 
-    const precioExacto = mat.precio_unitario;
-    const subtotalExacto = cantidad * precioExacto;
-    carrito.push({ nombre: mat.nombre, cantidad, unidad: mat.unidad, precio: precioExacto, subtotal: subtotalExacto });
+    const precioExacto = Number(mat.precio_unitario);
+    const subtotalExacto = Number(cantidad * precioExacto);
+
+    carrito.push({ 
+        nombre: mat.nombre, 
+        cantidad: cantidad, 
+        unidad: mat.unidad, 
+        precio: precioExacto, 
+        subtotal: subtotalExacto 
+    });
     actualizarCarrito();
     document.getElementById('cantidadRecibida').value = '';
 }
 
 function quitarDelCarrito(i){ carrito.splice(i,1); actualizarCarrito(); }
 
+// ✅ YA CORREGIDO: MUESTRA VALORES EXACTOS SIN REDONDEO PREMATURO
 function actualizarCarrito(){
     const lista = document.getElementById('listaCompra');
     if(carrito.length === 0){
@@ -324,10 +334,10 @@ function actualizarCarrito(){
     } else {
         lista.innerHTML = `<table class="tabla-resumen">
             <tr><th>Material</th><th>Peso</th><th>Precio U.</th><th>Subtotal</th><th>Quitar</th></tr>
-            ${carrito.map((item,i) => `<tr><td>${item.nombre}</td><td>${item.cantidad} ${item.unidad}</td><td>$${item.precio.toFixed(3)}</td><td>$${item.subtotal.toFixed(2)}</td><td><button class="btn-quitar" onclick="quitarDelCarrito(${i})">❌</button></td></tr>`).join('')}
+            ${carrito.map((item,i) => `<tr><td>${item.nombre}</td><td>${item.cantidad}</td><td>$${item.precio.toFixed(3)}</td><td>$${item.subtotal.toFixed(3)}</td><td><button class="btn-quitar" onclick="quitarDelCarrito(${i})">❌</button></td></tr>`).join('')}
         </table>`;
     }
-    const total = carrito.reduce((s,i) => s+i.subtotal, 0);
+    const total = carrito.reduce((s,i) => s + i.subtotal, 0);
     document.getElementById('totalCompra').textContent = `Total a Pagar: $${total.toFixed(2)}`;
 }
 
@@ -452,32 +462,26 @@ async function cargarHistorialYTotales(){
     let comprasLocales = JSON.parse(localStorage.getItem('comprasLocales')) || [];
 
     try { 
-        // ✅ CARGA PRIMERO LO QUE HAY EN LA NUBE (LO ÚNICO VÁLIDO)
         const { data, error } = await supabaseCliente.from('compras').select('*').order('creado_en', {ascending: false}); 
         if(!error) comprasNube = data || []; 
     } catch {
-        // Si no hay internet, usa lo local temporalmente PERO avisa
         todasLasCompras = comprasLocales;
         actualizarVistas();
         mostrarAviso("⚠️ Sin conexión: mostrando datos guardados en el dispositivo");
         return;
     }
 
-    // ✅ CREA LISTA DE CLAVES VÁLIDAS DE LA NUBE
     const clavesValidas = new Set();
     comprasNube.forEach(c => clavesValidas.add(generarClaveUnica(c)));
 
-    // ✅ SOLO CONSERVA LO QUE ESTÉ EN LA NUBE O SEA NUEVO SIN SINCRONIZAR
     const mapaUnico = new Map();
     comprasNube.forEach(c => mapaUnico.set(generarClaveUnica(c), c));
 
     comprasLocales.forEach(c => {
         const clave = generarClaveUnica(c);
-        // SOLO agrega lo que NO esté en la nube (compras nuevas sin internet)
         if(!clavesValidas.has(clave)) mapaUnico.set(clave, c);
     });
 
-    // ✅ SOBREESCRIBE LA MEMORIA LOCAL CON LO LIMPIO: BORRA LO ELIMINADO
     todasLasCompras = Array.from(mapaUnico.values());
     localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
 
@@ -490,6 +494,7 @@ function mostrarAviso(texto){
     aviso.textContent = texto;
     setTimeout(() => aviso.textContent = "✅ Todo listo para trabajar", 3000);
 }
+
 async function sincronizarPendientes(){
     if(datosPendientes.length === 0 || !navigator.onLine) return;
     let subidos = 0;
