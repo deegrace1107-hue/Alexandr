@@ -535,6 +535,10 @@ function dibujarHistorial(listaPersonalizada = null){
         </div>`).join('');
 }
 
+// 🔹 VARIABLE PARA CAMBIAR MODO DE VISTA
+let modoVista = 'dias'; // 'dias' = por día, 'acumulado' = total general
+
+// 🔹 FUNCIÓN PRINCIPAL DE TOTALES
 function dibujarTotales(listaPersonalizada = null){
     const lista = listaPersonalizada || todasLasCompras;
     const contenedor = document.getElementById('listaTotalesPorDia');
@@ -545,89 +549,187 @@ function dibujarTotales(listaPersonalizada = null){
         return;
     }
 
-    // 🔹 PRIMERO: TOTALES POR DÍA (como lo tenías)
-    const agrupadas = {};
-    mostrar.forEach(c => { 
-        if(!agrupadas[c.fecha]) agrupadas[c.fecha] = []; 
-        agrupadas[c.fecha].push(c); 
-    });
+    // 🔹 AGREGAMOS LOS BOTONES DE CAMBIO DE VISTA (COMO EN TU IMAGEN)
+    let htmlFinal = `
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
+        <button class="${modoVista==='dias'?'':'btn-ver-todos'}" style="${modoVista==='dias'?'background:#2e7d32;':'background:#e0e0e0; color:#333;'}" onclick="cambiarModoVista('dias')">📅 Ver por Días</button>
+        <button class="${modoVista==='acumulado'?'':'btn-ver-todos'}" style="${modoVista==='acumulado'?'background:#7b1fa2;':'background:#e0e0e0; color:#333;'}" onclick="cambiarModoVista('acumulado')">📊 Ver Total Acumulado</button>
+    </div>`;
 
-    const fechas = Object.keys(agrupadas).sort((a,b) => {
-        const [da,ma,ya] = a.split('/').map(Number);
-        const [db,mb,yb] = b.split('/').map(Number);
-        return new Date(yb, mb-1, db) - new Date(ya, ma-1, da);
-    });
-
-    let totalGeneral = 0;
-    let desgloseGlobal = {}; // 🔹 AQUÍ GUARDAMOS LA SUMA DE TODOS LOS MATERIALES
-
-    contenedor.innerHTML = fechas.map(fecha => {
-        const totalDia = agrupadas[fecha].reduce((s,c) => s + Number(c.total || 0), 0);
-        totalGeneral += totalDia;
-
-        // 🔹 SUMAMOS CADA MATERIAL PARA EL DESGLOSE GLOBAL
-        agrupadas[fecha].forEach(compra => {
-            compra.detalles.forEach(item => {
-                if(!desgloseGlobal[item.nombre]) {
-                    desgloseGlobal[item.nombre] = {
-                        cantidad: 0,
-                        subtotal: 0,
-                        unidad: item.unidad,
-                        precio: item.precio
-                    };
-                }
-                desgloseGlobal[item.nombre].cantidad += item.cantidad;
-                desgloseGlobal[item.nombre].subtotal += item.subtotal;
-            });
+    // ==============================================
+    // 🔹 MODO 1: VER POR DÍAS (IGUAL A TU EJEMPLO)
+    // ==============================================
+    if(modoVista === 'dias') {
+        const agrupadasPorFecha = {};
+        mostrar.forEach(c => { 
+            if(!agrupadasPorFecha[c.fecha]) agrupadasPorFecha[c.fecha] = []; 
+            agrupadasPorFecha[c.fecha].push(c); 
         });
 
-        return `
-        <div class="item-fecha">
-            <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼'">
-                <span>📅 ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span>
-                <span>💵 $${totalDia.toFixed(2)} <span class="flecha">▼</span></span>
-            </div>
-            <div class="contenido-fechas">
-                <table class="tabla-resumen">
-                    <tr><th>Hora</th><th>Total</th><th>Ver Detalle</th></tr>
-                    ${agrupadas[fecha].map(c => `<tr><td>${c.hora}</td><td>$${c.total.toFixed(2)}</td><td><button class="btn-ver-todos" onclick='verCompraGuardada(${JSON.stringify(c).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td></tr>`).join('')}
-                </table>
-            </div>
-        </div>`;
-    }).join('');
+        const fechas = Object.keys(agrupadasPorFecha).sort((a,b) => {
+            const [da,ma,ya] = a.split('/').map(Number);
+            const [db,mb,yb] = b.split('/').map(Number);
+            return new Date(yb, mb-1, db) - new Date(ya, ma-1, da);
+        });
 
-    // 🔹 SEGUNDO: DESGLOSE GLOBAL POR MATERIAL (LO QUE EXTRAÑABAS)
-    const listaMaterialesGlobal = Object.values(desgloseGlobal);
-    const totalDineroMateriales = listaMaterialesGlobal.reduce((s,m) => s + m.subtotal, 0);
+        let totalGeneral = 0;
 
-    contenedor.innerHTML += `
-    <div class="section" style="margin-top:15px; border-color:#7b1fa2; background:#faf5ff;">
-        <h2 style="color:#7b1fa2;">📊 DESGLOSE TOTAL GENERAL POR MATERIAL</h2>
-        <div class="table-wrap">
+        fechas.forEach(fecha => {
+            const comprasDelDia = agrupadasPorFecha[fecha];
+            const totalDia = comprasDelDia.reduce((s,c) => s + Number(c.total || 0), 0);
+            totalGeneral += totalDia;
+
+            // Agrupamos materiales DENTRO DEL DÍA (como en tu foto)
+            const materialesDelDia = {};
+            comprasDelDia.forEach(compra => {
+                if(compra.detalles) {
+                    compra.detalles.forEach(item => {
+                        if(!materialesDelDia[item.nombre]) {
+                            materialesDelDia[item.nombre] = {
+                                nombre: item.nombre,
+                                cantidad: 0,
+                                subtotal: 0,
+                                unidad: item.unidad || 'Libra'
+                            };
+                        }
+                        materialesDelDia[item.nombre].cantidad += Number(item.cantidad) || 0;
+                        materialesDelDia[item.nombre].subtotal += Number(item.subtotal) || 0;
+                    });
+                }
+            });
+
+            const listaMateriales = Object.values(materialesDelDia);
+
+            htmlFinal += `
+            <div class="item-fecha">
+                <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼'">
+                    <span>📅 Día: ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span>
+                    <span class="flecha">▼</span>
+                </div>
+                <div class="contenido-fechas abierto">
+                    <table class="tabla-resumen">
+                        <tr style="background:#e8f5e9;">
+                            <th>Material</th>
+                            <th>Peso Total</th>
+                            <th>Monto Total</th>
+                            <th>Acción</th>
+                        </tr>
+                        ${listaMateriales.map(mat => `
+                        <tr>
+                            <td>${mat.nombre}</td>
+                            <td>${mat.cantidad.toFixed(1)} ${mat.unidad}</td>
+                            <td>$${mat.subtotal.toFixed(2)}</td>
+                            <td><button class="btn-danger" onclick="eliminarMaterialDelDia('${fecha}', '${mat.nombre}')">🗑️ Eliminar</button></td>
+                        </tr>`).join('')}
+                        <tr class="fila-total-general">
+                            <td colspan="2">Total del día</td>
+                            <td colspan="2">$${totalDia.toFixed(2)}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>`;
+        });
+
+        htmlFinal += `<div style="text-align:right; font-weight:bold; font-size:15px; margin-top:10px;">💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}</div>`;
+    }
+
+    // ==============================================
+    // 🔹 MODO 2: VER TOTAL ACUMULADO (TODOS LOS DÍAS)
+    // ==============================================
+    if(modoVista === 'acumulado') {
+        const desgloseGlobal = {};
+        mostrar.forEach(compra => {
+            if(compra.detalles) {
+                compra.detalles.forEach(item => {
+                    if(!desgloseGlobal[item.nombre]) {
+                        desgloseGlobal[item.nombre] = {
+                            nombre: item.nombre,
+                            cantidad: 0,
+                            subtotal: 0,
+                            unidad: item.unidad || 'Libra'
+                        };
+                    }
+                    desgloseGlobal[item.nombre].cantidad += Number(item.cantidad) || 0;
+                    desgloseGlobal[item.nombre].subtotal += Number(item.subtotal) || 0;
+                });
+            }
+        });
+
+        const listaAcumulada = Object.values(desgloseGlobal);
+        const totalAcumulado = listaAcumulada.reduce((s,m) => s + m.subtotal, 0);
+
+        htmlFinal += `
+        <div class="section" style="border-color:#7b1fa2; background:#faf5ff;">
+            <h2 style="color:#7b1fa2; text-align:center;">📊 TOTAL ACUMULADO GENERAL</h2>
             <table class="tabla-resumen">
-                <tr style="background:#e1bee7; color:#4a148c;">
+                <tr style="background:#e1bee7;">
                     <th>Material</th>
-                    <th>Cantidad Total</th>
-                    <th>Total en Dinero</th>
+                    <th>Peso Total</th>
+                    <th>Monto Total</th>
                     <th>Acción</th>
                 </tr>
-                ${listaMaterialesGlobal.map(mat => `
+                ${listaAcumulada.map(mat => `
                 <tr>
-                    <td><strong>${mat.nombre}</strong></td>
+                    <td>${mat.nombre}</td>
                     <td>${mat.cantidad.toFixed(1)} ${mat.unidad}</td>
                     <td>$${mat.subtotal.toFixed(2)}</td>
-                    <td><button class="btn-danger" onclick="despacharMaterial('${mat.nombre}')">✅ Despachar / Reiniciar</button></td>
+                    <td><button class="btn-danger" onclick="reiniciarMaterialAcumulado('${mat.nombre}')">🔄 Liquidar / Reiniciar</button></td>
                 </tr>`).join('')}
                 <tr class="fila-total-general">
-                    <td colspan="2" style="text-align:center;">💰 TOTAL GENERAL</td>
-                    <td colspan="2">$${totalDineroMateriales.toFixed(2)}</td>
+                    <td colspan="2">💰 TOTAL GENERAL</td>
+                    <td colspan="2">$${totalAcumulado.toFixed(2)}</td>
                 </tr>
             </table>
-        </div>
-        <p style="font-size:11px; color:#666; margin-top:8px;">Al dar clic en "Despachar" se reinicia el total de ese material a cero para empezar de nuevo.</p>
-    </div>`;
+        </div>`;
+    }
+
+    contenedor.innerHTML = htmlFinal;
 }
 
+// 🔹 CAMBIAR ENTRE MODOS DE VISTA
+function cambiarModoVista(tipo) {
+    modoVista = tipo;
+    dibujarTotales();
+}
+
+// 🔹 ELIMINAR UN MATERIAL DE UN DÍA ESPECÍFICO (COMO EN TU FOTO)
+async function eliminarMaterialDelDia(fecha, nombreMaterial) {
+    if(!confirm(`¿Eliminar «${nombreMaterial}» del día ${fecha}?\nLo quitarás solo de este día, se guarda como despachado.`)) return;
+
+    todasLasCompras.forEach(compra => {
+        if(compra.fecha === fecha && compra.detalles) {
+            compra.detalles = compra.detalles.filter(item => item.nombre !== nombreMaterial);
+        }
+    });
+
+    // Quitamos compras que queden vacías
+    todasLasCompras = todasLasCompras.filter(c => c.detalles && c.detalles.length > 0);
+
+    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
+    if(navigator.onLine) await supabaseCliente.from('compras').upsert(todasLasCompras);
+
+    alert(`✅ «${nombreMaterial}» eliminado del día ${fecha}`);
+    actualizarVistas();
+}
+
+// 🔹 REINICIAR UN MATERIAL EN TODO EL ACUMULADO (PARA LIQUIDAR)
+async function reiniciarMaterialAcumulado(nombreMaterial) {
+    if(!confirm(`¿Seguro quieres liquidar y reiniciar «${nombreMaterial}»?\nSe borrará todo su acumulado para empezar de cero.`)) return;
+
+    todasLasCompras.forEach(compra => {
+        if(compra.detalles) {
+            compra.detalles = compra.detalles.filter(item => item.nombre !== nombreMaterial);
+        }
+    });
+
+    todasLasCompras = todasLasCompras.filter(c => c.detalles && c.detalles.length > 0);
+
+    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
+    if(navigator.onLine) await supabaseCliente.from('compras').upsert(todasLasCompras);
+
+    alert(`✅ «${nombreMaterial}» liquidado y reiniciado correctamente`);
+    actualizarVistas();
+}
 // 🔹 FUNCIÓN PARA DESPACHAR Y REINICIAR MATERIAL
 async function despacharMaterial(nombreMaterial){
     if(!confirm(`¿Seguro quieres reiniciar el total de ${nombreMaterial}?\nSe guardará como despachado y empezarás de cero con este material.`)) return;
