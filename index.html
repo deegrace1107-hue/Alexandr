@@ -209,13 +209,20 @@ window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
 // ========== MATERIALES ==========
 async function cargarMateriales(){
+    // ✅ PRIMERO CARGA LO GUARDADO EN EL TELÉFONO (SIN INTERNET)
+    const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+    listaMateriales = datosLocales;
+    actualizarTablaMateriales(listaMateriales);
+    actualizarSelectMateriales(listaMateriales);
+
+    // ✅ LUEGO ACTUALIZA DESDE LA NUBE SI HAY SEÑAL
     let datosNube = [];
     try { 
         const { data, error } = await supabaseCliente.from('materiales').select('*').order('nombre', {ascending:true}); 
         if(!error) datosNube = data || [];
     } catch {}
-    
-    const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
+
+    // ✅ UNE Y GUARDA SIN DUPLICAR
     const mapa = new Map();
     datosNube.forEach(m => mapa.set(m.nombre.toLowerCase(), m));
     datosLocales.forEach(m => { if(!mapa.has(m.nombre.toLowerCase())) mapa.set(m.nombre.toLowerCase(), m); });
@@ -441,19 +448,31 @@ function buscarPorFecha(){
 }
 
 async function cargarHistorialYTotales(){
-    localStorage.removeItem('comprasLocales');
+    // ✅ PRIMERO CARGA LO GUARDADO EN EL TELÉFONO (ABRE AL INSTANTE SIN INTERNET)
+    const comprasLocales = JSON.parse(localStorage.getItem('comprasLocales')) || [];
+    todasLasCompras = comprasLocales;
+    actualizarVistas();
+
+    // ✅ LUEGO ACTUALIZA DESDE LA NUBE SI HAY CONEXIÓN
     let comprasNube = [];
     try { 
         const { data, error } = await supabaseCliente.from('compras').select('*').order('creado_en', {ascending: false}); 
         if(!error) comprasNube = data || []; 
     } catch {}
-    
+
+    // ✅ UNE Y ELIMINA DUPLICADOS, GUARDA LA VERSIÓN COMPLETA
     const mapaUnico = new Map();
     comprasNube.forEach(c => {
         const clave = generarClaveUnica(c);
         if(!mapaUnico.has(clave)) mapaUnico.set(clave, c);
     });
+    comprasLocales.forEach(c => {
+        const clave = generarClaveUnica(c);
+        if(!mapaUnico.has(clave)) mapaUnico.set(clave, c);
+    });
+
     todasLasCompras = Array.from(mapaUnico.values());
+    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
     actualizarVistas();
 }
 
