@@ -237,6 +237,38 @@ async function cargarMateriales(){
     actualizarTablaMateriales(listaMateriales);
     actualizarSelectMateriales(listaMateriales);
 }
+    async function guardarMaterial(){
+    const nombre = document.getElementById('nombreMaterial').value.trim();
+    const unidad = document.getElementById('unidadMedida').value;
+    const valorEntrada = document.getElementById('precioUnitario').value;
+    const precio = Number(valorEntrada);
+
+    if(!nombre || isNaN(precio) || precio <= 0) {
+        return alert('Escribe un nombre y un precio válido (ej: 0.015)');
+    }
+    
+    if(listaMateriales.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) {
+        return alert('⚠️ Este material ya existe, usa otro nombre o borra el anterior');
+    }
+    
+    const nuevo = { nombre, unidad, precio_unitario: precio };
+    listaMateriales.push(nuevo);
+    localStorage.setItem('materialesLocales', JSON.stringify(listaMateriales));
+    
+    try {
+        const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
+        alert(!error ? '✅ Material guardado perfectamente' : '⚠️ Guardado en el dispositivo, se subirá al tener internet');
+    } catch {
+        datosPendientes.push({tipo:'material', datos:nuevo});
+        localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
+        alert('⚠️ Guardado localmente, se sincronizará luego');
+    }
+    
+    document.getElementById('nombreMaterial').value = '';
+    document.getElementById('precioUnitario').value = '';
+    actualizarTablaMateriales(listaMateriales);
+    actualizarSelectMateriales(listaMateriales);
+}
 
 // ✅ YA CORREGIDO: MUESTRA PRECIO EXACTO DE 3 DECIMALES SIN REDONDEAR
 function actualizarTablaMateriales(lista){
