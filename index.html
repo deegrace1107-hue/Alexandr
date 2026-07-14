@@ -452,30 +452,44 @@ async function cargarHistorialYTotales(){
     let comprasLocales = JSON.parse(localStorage.getItem('comprasLocales')) || [];
 
     try { 
+        // ✅ CARGA PRIMERO LO QUE HAY EN LA NUBE (LO ÚNICO VÁLIDO)
         const { data, error } = await supabaseCliente.from('compras').select('*').order('creado_en', {ascending: false}); 
         if(!error) comprasNube = data || []; 
     } catch {
+        // Si no hay internet, usa lo local temporalmente PERO avisa
         todasLasCompras = comprasLocales;
         actualizarVistas();
+        mostrarAviso("⚠️ Sin conexión: mostrando datos guardados en el dispositivo");
         return;
     }
 
+    // ✅ CREA LISTA DE CLAVES VÁLIDAS DE LA NUBE
+    const clavesValidas = new Set();
+    comprasNube.forEach(c => clavesValidas.add(generarClaveUnica(c)));
+
+    // ✅ SOLO CONSERVA LO QUE ESTÉ EN LA NUBE O SEA NUEVO SIN SINCRONIZAR
     const mapaUnico = new Map();
-    comprasNube.forEach(c => {
-        const clave = generarClaveUnica(c);
-        mapaUnico.set(clave, c);
-    });
+    comprasNube.forEach(c => mapaUnico.set(generarClaveUnica(c), c));
 
     comprasLocales.forEach(c => {
         const clave = generarClaveUnica(c);
-        if(!mapaUnico.has(clave)) mapaUnico.set(clave, c);
+        // SOLO agrega lo que NO esté en la nube (compras nuevas sin internet)
+        if(!clavesValidas.has(clave)) mapaUnico.set(clave, c);
     });
 
+    // ✅ SOBREESCRIBE LA MEMORIA LOCAL CON LO LIMPIO: BORRA LO ELIMINADO
     todasLasCompras = Array.from(mapaUnico.values());
     localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
+
     actualizarVistas();
+    mostrarAviso("✅ Datos sincronizados: solo se muestra lo registrado en la base de datos");
 }
 
+function mostrarAviso(texto){
+    const aviso = document.getElementById('estadoConexion');
+    aviso.textContent = texto;
+    setTimeout(() => aviso.textContent = "✅ Todo listo para trabajar", 3000);
+}
 async function sincronizarPendientes(){
     if(datosPendientes.length === 0 || !navigator.onLine) return;
     let subidos = 0;
