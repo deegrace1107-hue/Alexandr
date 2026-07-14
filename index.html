@@ -606,7 +606,7 @@ function dibujarTotales(listaPersonalizada = null){
                     <span>📅 Día: ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span>
                     <span class="flecha">▼</span>
                 </div>
-                <div class="contenido-fechas abierto">
+                <div class="contenido-fechas ${fecha === fechaHoy ? 'abierto' : ''}">
                     <table class="tabla-resumen">
                         <tr style="background:#e8f5e9;">
                             <th>Material</th>
