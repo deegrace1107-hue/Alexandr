@@ -545,6 +545,7 @@ function dibujarTotales(listaPersonalizada = null){
         return;
     }
 
+    // 🔹 PRIMERO: TOTALES POR DÍA (como lo tenías)
     const agrupadas = {};
     mostrar.forEach(c => { 
         if(!agrupadas[c.fecha]) agrupadas[c.fecha] = []; 
@@ -558,9 +559,28 @@ function dibujarTotales(listaPersonalizada = null){
     });
 
     let totalGeneral = 0;
+    let desgloseGlobal = {}; // 🔹 AQUÍ GUARDAMOS LA SUMA DE TODOS LOS MATERIALES
+
     contenedor.innerHTML = fechas.map(fecha => {
         const totalDia = agrupadas[fecha].reduce((s,c) => s + Number(c.total || 0), 0);
         totalGeneral += totalDia;
+
+        // 🔹 SUMAMOS CADA MATERIAL PARA EL DESGLOSE GLOBAL
+        agrupadas[fecha].forEach(compra => {
+            compra.detalles.forEach(item => {
+                if(!desgloseGlobal[item.nombre]) {
+                    desgloseGlobal[item.nombre] = {
+                        cantidad: 0,
+                        subtotal: 0,
+                        unidad: item.unidad,
+                        precio: item.precio
+                    };
+                }
+                desgloseGlobal[item.nombre].cantidad += item.cantidad;
+                desgloseGlobal[item.nombre].subtotal += item.subtotal;
+            });
+        });
+
         return `
         <div class="item-fecha">
             <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼'">
@@ -574,9 +594,67 @@ function dibujarTotales(listaPersonalizada = null){
                 </table>
             </div>
         </div>`;
-    }).join('') + `<table class="tabla-resumen"><tr class="fila-total-general"><td colspan="3" style="text-align:center;">💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}</td></tr></table>`;
+    }).join('');
+
+    // 🔹 SEGUNDO: DESGLOSE GLOBAL POR MATERIAL (LO QUE EXTRAÑABAS)
+    const listaMaterialesGlobal = Object.values(desgloseGlobal);
+    const totalDineroMateriales = listaMaterialesGlobal.reduce((s,m) => s + m.subtotal, 0);
+
+    contenedor.innerHTML += `
+    <div class="section" style="margin-top:15px; border-color:#7b1fa2; background:#faf5ff;">
+        <h2 style="color:#7b1fa2;">📊 DESGLOSE TOTAL GENERAL POR MATERIAL</h2>
+        <div class="table-wrap">
+            <table class="tabla-resumen">
+                <tr style="background:#e1bee7; color:#4a148c;">
+                    <th>Material</th>
+                    <th>Cantidad Total</th>
+                    <th>Total en Dinero</th>
+                    <th>Acción</th>
+                </tr>
+                ${listaMaterialesGlobal.map(mat => `
+                <tr>
+                    <td><strong>${mat.nombre}</strong></td>
+                    <td>${mat.cantidad.toFixed(1)} ${mat.unidad}</td>
+                    <td>$${mat.subtotal.toFixed(2)}</td>
+                    <td><button class="btn-danger" onclick="despacharMaterial('${mat.nombre}')">✅ Despachar / Reiniciar</button></td>
+                </tr>`).join('')}
+                <tr class="fila-total-general">
+                    <td colspan="2" style="text-align:center;">💰 TOTAL GENERAL</td>
+                    <td colspan="2">$${totalDineroMateriales.toFixed(2)}</td>
+                </tr>
+            </table>
+        </div>
+        <p style="font-size:11px; color:#666; margin-top:8px;">Al dar clic en "Despachar" se reinicia el total de ese material a cero para empezar de nuevo.</p>
+    </div>`;
 }
 
+// 🔹 FUNCIÓN PARA DESPACHAR Y REINICIAR MATERIAL
+async function despacharMaterial(nombreMaterial){
+    if(!confirm(`¿Seguro quieres reiniciar el total de ${nombreMaterial}?\nSe guardará como despachado y empezarás de cero con este material.`)) return;
+
+    // Marcamos las compras de este material como despachadas
+    todasLasCompras.forEach(compra => {
+        compra.detalles = compra.detalles.filter(item => item.nombre !== nombreMaterial);
+    });
+
+    // Quitamos compras vacías
+    todasLasCompras = todasLasCompras.filter(c => c.detalles.length > 0);
+
+    // Guardamos los cambios
+    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
+
+    // Sincronizamos a la nube si hay internet
+    if(navigator.onLine) {
+        try {
+            await supabaseCliente.from('compras').upsert(todasLasCompras);
+        } catch {
+            alert('Se guardó en su dispositivo, se actualizará al conectarse');
+        }
+    }
+
+    alert(`✅ ${nombreMaterial} se ha despachado correctamente, listo para empezar de cero`);
+    actualizarVistas();
+}
 function verCompraGuardada(c,t){
     facturaActual = c;
     t==="cliente"?mostrarCliente():mostrarDetallada();
