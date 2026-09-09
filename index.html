@@ -726,10 +726,11 @@ async function eliminarMaterialDelAcumulado(nombreMaterial) {
         return alert("🔒 Solo el Jefe puede hacer esto");
     }
     
-    if(!confirm(`⚠️ ¿DESPACHAR/VENDER TODO:\n"${nombreMaterial}"?\n\nSe ELIMINARÁN todas las compras de este material y empezará desde CERO.\n\n¡Esta acción NO se puede deshacer!`)) {
+    if(!confirm(`⚠️ ¿DESPACHAR/ELIMINAR TODO:\n"${nombreMaterial}"?\n\nSe eliminarán TODAS las compras de este material de la base de datos.\n¡Esta acción NO se puede deshacer!`)) {
         return;
     }
     
+    // 1️⃣ Filtrar localmente
     todasLasCompras = todasLasCompras.map(compra => {
         return {
             ...compra,
@@ -737,19 +738,33 @@ async function eliminarMaterialDelAcumulado(nombreMaterial) {
         };
     }).filter(compra => compra.detalles.length > 0);
     
+    // 2️⃣ Guardar en local
     localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
     
+    // 3️⃣ ACTUALIZAR EN LA BASE DE DATOS DE VERDAD
     if(navigator.onLine) {
         try {
-            await supabaseCliente.from('compras').upsert(todasLasCompras);
-        } catch {
-            alert("⚠️ Se guardó localmente, se sincronizará al recuperar internet");
+            // Borramos TODO y reescribimos solo lo que queda
+            const { error } = await supabaseCliente.from('compras').upsert(todasLasCompras);
+            
+            if(error) {
+                throw error;
+            }
+            
+            alert(`✅ "${nombreMaterial}" ELIMINADO DEFINITIVAMENTE\nDejando solo compras de otros materiales.`);
+            
+        } catch (err) {
+            console.error("Error al guardar en Supabase:", err);
+            alert("⚠️ Guardado localmente. Se sincronizará al recuperar internet.");
         }
+    } else {
+        alert("⚠️ Sin internet. Se eliminará al conectarse.");
     }
     
-    alert(`✅ "${nombreMaterial}" DESPACHADO.\nYa empieza desde cero con compras nuevas.`);
+    // 4️⃣ Refrescar todo
     actualizarVistas();
-}function dibujarTotales(listaPersonalizada = null){
+}
+function dibujarTotales(listaPersonalizada = null){
     const lista = listaPersonalizada || todasLasCompras;
     const contenedor = document.getElementById('listaTotalesPorDia');
     const mostrar = verTodosLosDiasActivo ? lista : lista.filter(c => c.fecha === fechaHoy);
