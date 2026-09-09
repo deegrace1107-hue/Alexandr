@@ -37,7 +37,7 @@
         .btn-buscar { background-color: #1976d2; width: auto; }
         .btn-ver-todos { background-color: #ff9800; width: auto; }
         .btn-quitar { background-color: #ef5350; padding: 4px 6px; font-size: 11px; border-radius: 4px; width: auto; }
-        .btn-cliente, .btn-detallada { padding: 4px 2px !important; font-size: 10.5px !important; min-width: 60px !important; width: auto !important; margin: 1px !important; }
+        .btn-cliente, .btn-detallada, .btn-danger { padding: 4px 2px !important; font-size: 10.5px !important; min-width: 60px !important; width: auto !important; margin: 1px !important; }
         .btn-ver-historial { background-color: #795548; width: auto; color: white; font-weight: bold; }
         .btn-danger { background-color: #d32f2f; }
         .btn-cerrar-sesion { background: #666; font-size:12px; padding:6px 10px; width:auto; margin-bottom:10px; }
@@ -227,6 +227,7 @@ let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 let listaMateriales = [];
 let esAdministrador = false;
 let claveJefeGuardada = localStorage.getItem('claveJefe') || null;
+let modoVista = 'dias';
 
 function entrarComoEmpleado() {
     esAdministrador = false;
@@ -648,6 +649,11 @@ async function sincronizarPendientes(){
     await cargarHistorialYTotales();
 }
 
+function cambiarModoVista(tipo) {
+    modoVista = tipo;
+    dibujarTotales();
+}
+
 function actualizarVistas(){
     dibujarHistorial();
     dibujarTotales();
@@ -715,11 +721,34 @@ async function eliminarFacturaDirecta(compra) {
     actualizarVistas();
 }
 
-let modoVista = 'dias';
-
-function cambiarModoVista(tipo) {
-    modoVista = tipo;
-    dibujarTotales();
+async function eliminarMaterialDelAcumulado(nombreMaterial) {
+    if(!esAdministrador) {
+        return alert("🔒 Solo el Jefe puede hacer esto");
+    }
+    
+    if(!confirm(`⚠️ ¿DESPACHAR/VENDER TODO:\n"${nombreMaterial}"?\n\nSe ELIMINARÁN todas las compras de este material y empezará desde CERO.\n\n¡Esta acción NO se puede deshacer!`)) {
+        return;
+    }
+    
+    todasLasCompras = todasLasCompras.map(compra => {
+        return {
+            ...compra,
+            detalles: compra.detalles.filter(item => item.nombre !== nombreMaterial)
+        };
+    }).filter(compra => compra.detalles.length > 0);
+    
+    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
+    
+    if(navigator.onLine) {
+        try {
+            await supabaseCliente.from('compras').upsert(todasLasCompras);
+        } catch {
+            alert("⚠️ Se guardó localmente, se sincronizará al recuperar internet");
+        }
+    }
+    
+    alert(`✅ "${nombreMaterial}" DESPACHADO.\nYa empieza desde cero con compras nuevas.`);
+    actualizarVistas();
 }
 
 function dibujarTotales(listaPersonalizada = null){
@@ -761,9 +790,12 @@ function dibujarTotales(listaPersonalizada = null){
                     materialesDelDia[item.nombre].cantidad += Number(item.cantidad) || 0;
                     materialesDelDia[item.nombre].subtotal += Number(item.subtotal) || 0;
                 });
+                });
             });
-            const listaMateriales = Object.values(materialesDelDia);
-            htmlFinal += `
+
+        const listaMateriales = Object.values(materialesDelDia);
+
+        htmlFinal += `
             <div class="item-fecha">
                 <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼'">
                     <span>📅 ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''} — Total: $${totalDia.toFixed(2)}</span>
@@ -771,24 +803,28 @@ function dibujarTotales(listaPersonalizada = null){
                 </div>
                 <div class="contenido-fechas">
                     <table class="tabla-resumen">
-                        <tr><th>Material</th><th>Cantidad</th><th>Subtotal</th></tr>
+                        <tr>
+                            <th>Material</th>
+                            <th>Cantidad</th>
+                            <th>Subtotal</th>
+                            ${esAdministrador ? '<th>Acción</th>' : ''}
+                        </tr>
                         ${listaMateriales.map(m => `
                           <tr>
                             <td>${m.nombre}</td>
                             <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
                             <td>$${m.subtotal.toFixed(2)}</td>
+                            ${esAdministrador ? `<td><button class="btn-danger" onclick="eliminarMaterialDelAcumulado('${m.nombre}')">🗑️ Despachar</button></td>` : ''}
                           </tr>`
                         ).join('')}
                         <tr class="fila-total-general">
-                            <td colspan="2">TOTAL DEL DÍA</td>
+                            <td colspan="${esAdministrador ? '3' : '2'}">TOTAL DEL DÍA</td>
                             <td>$${totalDia.toFixed(2)}</td>
                         </tr>
                     </table>
-                    </table>
                 </div>
             </div>`;
-        });
-        
+
         htmlFinal += `
         <div class="fila-total-general" style="padding:12px; margin-top:10px; border-radius:6px;">
             TOTAL GENERAL: $${totalGeneral.toFixed(2)}
@@ -810,26 +846,33 @@ function dibujarTotales(listaPersonalizada = null){
                 acumuladoPorMaterial[item.nombre].subtotal += Number(item.subtotal) || 0;
             });
         });
+
         const listaAcumulada = Object.values(acumuladoPorMaterial);
-        const totalAcumulado = listaAcumulada.reduce((s,m) => s + m.subtotal, 0);
-        
+        const totalAcumulado = listaAcumulada.reduce((s, m) => s + m.subtotal, 0);
+
         htmlFinal += `
         <table class="tabla-resumen">
-            <tr><th>Material</th><th>Cantidad Total</th><th>Subtotal Acumulado</th></tr>
+            <tr>
+                <th>Material</th>
+                <th>Cantidad Total</th>
+                <th>Subtotal Acumulado</th>
+                ${esAdministrador ? '<th>Acción</th>' : ''}
+            </tr>
             ${listaAcumulada.map(m => `
               <tr>
                 <td>${m.nombre}</td>
                 <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
                 <td>$${m.subtotal.toFixed(2)}</td>
+                ${esAdministrador ? `<td><button class="btn-danger" onclick="eliminarMaterialDelAcumulado('${m.nombre}')">🗑️ Despachar Todo</button></td>` : ''}
               </tr>`
             ).join('')}
             <tr class="fila-total-general">
-                <td colspan="2">TOTAL ACUMULADO GENERAL</td>
+                <td colspan="${esAdministrador ? '3' : '2'}">💰 TOTAL GENERAL ACUMULADO</td>
                 <td>$${totalAcumulado.toFixed(2)}</td>
             </tr>
         </table>`;
     }
-    
+
     contenedor.innerHTML = htmlFinal;
 }
 </script>
