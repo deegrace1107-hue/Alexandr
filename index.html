@@ -726,44 +726,54 @@ async function eliminarMaterialDelAcumulado(nombreMaterial) {
         return alert("🔒 Solo el Jefe puede hacer esto");
     }
     
-    if(!confirm(`⚠️ ¿DESPACHAR/ELIMINAR TODO:\n"${nombreMaterial}"?\n\nSe eliminarán TODAS las compras de este material de la base de datos.\n¡Esta acción NO se puede deshacer!`)) {
+    if(!confirm(`⚠️ ¿DESPACHAR/ELIMINAR TODO:\n"${nombreMaterial}"?\n\nSe borrará de la base de datos para SIEMPRE.\n¡NO se puede deshacer!`)) {
         return;
     }
-    
-    // 1️⃣ Filtrar localmente
-    todasLasCompras = todasLasCompras.map(compra => {
-        return {
-            ...compra,
-            detalles: compra.detalles.filter(item => item.nombre !== nombreMaterial)
-        };
-    }).filter(compra => compra.detalles.length > 0);
-    
-    // 2️⃣ Guardar en local
-    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
-    
-    // 3️⃣ ACTUALIZAR EN LA BASE DE DATOS DE VERDAD
-    if(navigator.onLine) {
-        try {
-            // Borramos TODO y reescribimos solo lo que queda
-            const { error } = await supabaseCliente.from('compras').upsert(todasLasCompras);
-            
-            if(error) {
-                throw error;
+
+    // Filtrar: QUITAR el material de TODAS las compras
+    const nuevasCompras = todasLasCompras.map(compra => ({
+        ...compra,
+        detalles: compra.detalles.filter(item => item.nombre !== nombreMaterial)
+    })).filter(compra => compra.detalles.length > 0); // Quita compras que quedaron vacías
+
+    try {
+        if(navigator.onLine) {
+            // PASO CLAVE: BORRAR TODO de la tabla primero
+            const { error: errorBorrado } = await supabaseCliente
+                .from('compras')
+                .delete()
+                .neq('id', 0); // Borra TODOS los registros
+
+            if(errorBorrado) throw errorBorrado;
+
+            // Ahora guardamos SOLO lo que queda
+            if(nuevasCompras.length > 0) {
+                const { error: errorGuardado } = await supabaseCliente
+                    .from('compras')
+                    .insert(nuevasCompras);
+                
+                if(errorGuardado) throw errorGuardado;
             }
+
+            // Actualizar lista local
+            todasLasCompras = nuevasCompras;
+            localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
             
-            alert(`✅ "${nombreMaterial}" ELIMINADO DEFINITIVAMENTE\nDejando solo compras de otros materiales.`);
-            
-        } catch (err) {
-            console.error("Error al guardar en Supabase:", err);
-            alert("⚠️ Guardado localmente. Se sincronizará al recuperar internet.");
+            alert(`✅ ¡ELIMINADO COMPLETAMENTE!\n"${nombreMaterial}" ya no aparece para nadie.`);
+        } else {
+            // Sin internet: guardar local
+            todasLasCompras = nuevasCompras;
+            localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
+            alert("⚠️ Sin internet. Se sincronizará al conectarse.");
         }
-    } else {
-        alert("⚠️ Sin internet. Se eliminará al conectarse.");
+    } catch (error) {
+        console.error("Error:", error);
+        alert("❌ Error: " + (error?.message || "No se pudo borrar"));
     }
-    
-    // 4️⃣ Refrescar todo
+
     actualizarVistas();
 }
+
 function dibujarTotales(listaPersonalizada = null){
     const lista = listaPersonalizada || todasLasCompras;
     const contenedor = document.getElementById('listaTotalesPorDia');
