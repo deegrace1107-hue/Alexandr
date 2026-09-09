@@ -152,7 +152,7 @@
                         <th>Material</th>
                         <th>Unidad</th>
                         <th>Precio</th>
-                        <th class="solo-admin">Acción</th>
+                        <th>Acción</th>
                     </tr>
                 </thead>
                 <tbody id="cuerpoTabla"></tbody>
@@ -229,10 +229,10 @@ let fechaHoy = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guaya
 let todasLasCompras = [];
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 let listaMateriales = [];
-let esAdministrador = false; // 🔐 Control de permisos
+let esAdministrador = false;
 let claveJefeGuardada = localStorage.getItem('claveJefe') || null;
 
-// ========== FUNCIONES DE INICIO DE SESIÓN ==========
+// ========== INICIO DE SESIÓN ==========
 function entrarComoEmpleado() {
     esAdministrador = false;
     ingresarALaApp();
@@ -263,13 +263,11 @@ function verificarClaveYEntrar() {
 function guardarNuevaClave() {
     const c1 = document.getElementById('nuevaClave1').value.trim();
     const c2 = document.getElementById('nuevaClave2').value.trim();
-    
     if(!c1 || c1.length < 3) return alert("Escriba una contraseña de al menos 3 caracteres");
     if(c1 !== c2) return alert("Las contraseñas no coinciden");
-    
     claveJefeGuardada = c1;
     localStorage.setItem('claveJefe', c1);
-    alert("✅ Contraseña guardada correctamente!\nGuárdela bien, solo usted la sabe 🔑");
+    alert("✅ Contraseña guardada correctamente!");
     document.getElementById('nuevaClave1').value = '';
     document.getElementById('nuevaClave2').value = '';
     document.getElementById('zonaConfigClave').style.display = 'none';
@@ -278,11 +276,7 @@ function guardarNuevaClave() {
 function ingresarALaApp() {
     document.getElementById('pantallaLogin').classList.add('oculto');
     document.getElementById('aplicacionPrincipal').classList.remove('oculto');
-    
-    // Mostrar/ocultar elementos solo para administrador
     aplicarPermisos();
-    
-    // Iniciar la app
     supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
     actualizarEstadoConexion(navigator.onLine);
     cargarMateriales();
@@ -295,6 +289,10 @@ function aplicarPermisos() {
     elementosAdmin.forEach(el => {
         el.style.display = esAdministrador ? '' : 'none';
     });
+    const btnEliminarFactura = document.getElementById('btnEliminarFactura');
+    if(btnEliminarFactura) {
+        btnEliminarFactura.style.display = esAdministrador ? 'inline-block' : 'none';
+    }
 }
 
 function cerrarSesion() {
@@ -307,7 +305,6 @@ function cerrarSesion() {
     }
 }
 
-// Ocultar zona de crear clave si ya tiene una
 if(claveJefeGuardada) {
     document.getElementById('zonaConfigClave').style.display = 'none';
 }
@@ -330,7 +327,7 @@ function actualizarEstadoConexion(conectado) {
     }
 }
 
-// ========== MATERIALES ==========
+// ========== MATERIALES — TODOS PUEDEN ELIMINAR ==========
 async function cargarMateriales(){
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     listaMateriales = datosLocales.map(m => ({
@@ -367,11 +364,11 @@ async function guardarMaterial(){
     const precio = Number(valorEntrada);
 
     if(!nombre || isNaN(precio) || precio <= 0) {
-        return alert('Escribe un nombre y un precio válido (ej: 0.015)');
+        return alert('Escribe un nombre y un precio válido');
     }
     
     if(listaMateriales.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) {
-        return alert('⚠️ Este material ya existe, usa otro nombre o borra el anterior');
+        return alert('⚠️ Este material ya existe');
     }
     
     const nuevo = { nombre, unidad, precio_unitario: precio };
@@ -399,13 +396,11 @@ function actualizarTablaMateriales(lista){
         cuerpo.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#666;">No hay materiales aún</td></tr>`;
         return;
     }
-    cuerpo.innerHTML = lista.map((m, i) => `<tr><td>${m.nombre}</td><td>${m.unidad}</td><td>$${Number(m.precio_unitario).toFixed(3)}</td><td class="solo-admin"><button class="btn-danger" onclick="eliminarMaterial(${JSON.stringify(m.id || `l-${i}`)})">Eliminar</button></td></tr>`).join('');
-    aplicarPermisos();
+    cuerpo.innerHTML = lista.map((m, i) => `<tr><td>${m.nombre}</td><td>${m.unidad}</td><td>$${Number(m.precio_unitario).toFixed(3)}</td><td><button class="btn-danger" onclick="eliminarMaterial(${JSON.stringify(m.id || `l-${i}`)})">Eliminar</button></td></tr>`).join('');
 }
 
 async function eliminarMaterial(id){
-    if(!esAdministrador) return alert("🔒 Solo el Jefe puede eliminar materiales");
-    
+    // ✅ TODOS pueden eliminar materiales — sin restricción de administrador
     if(String(id).startsWith('l-')) {
         const indice = Number(id.split('-')[1]);
         listaMateriales.splice(indice,1);
@@ -519,32 +514,24 @@ async function generarFacturas(){
     await cargarHistorialYTotales();
 }
 
-// ========== ELIMINAR FACTURA (SOLO JEFE) ==========
+// ========== ELIMINAR FACTURA — SOLO JEFE ==========
 async function eliminarFacturaActual() {
     if(!esAdministrador) return alert("🔒 Solo el Jefe puede eliminar facturas");
     if(!facturaActual) return;
     
-    if(!confirm(`⚠️ ¿Eliminar ESTA FACTURA por completo?\nSe borrará de la base de datos y no se podrá recuperar.\n\nFecha: ${facturaActual.fecha} — Total: $${facturaActual.total.toFixed(2)}`)) return;
+    if(!confirm(`⚠️ ¿Eliminar ESTA FACTURA?\nFecha: ${facturaActual.fecha} — Total: $${facturaActual.total.toFixed(2)}`)) return;
 
     const claveBorrar = generarClaveUnica(facturaActual);
+    todasLasCompras = todasLasCompras.filter(c => generarClaveUnica(c) !== claveBorrar);
+    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
     
-    try {
-        // Quitar de la lista local
-        todasLasCompras = todasLasCompras.filter(c => generarClaveUnica(c) !== claveBorrar);
-        localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
-        
-        // Reemplazar en la base
-        if(navigator.onLine) {
-            await supabaseCliente.from('compras').upsert(todasLasCompras);
-        }
-        
-        alert("✅ Factura ELIMINADA de la base de datos");
-        cerrarVentana();
-        await cargarHistorialYTotales();
-        
-    } catch (err) {
-        alert(`⚠️ Error: ${err.message}`);
+    if(navigator.onLine) {
+        await supabaseCliente.from('compras').upsert(todasLasCompras);
     }
+    
+    alert("✅ Factura ELIMINADA");
+    cerrarVentana();
+    await cargarHistorialYTotales();
 }
 
 function mostrarCliente(){
@@ -780,40 +767,35 @@ function dibujarTotales(listaPersonalizada = null){
             const listaMateriales = Object.values(materialesDelDia);
             htmlFinal += `
             <div class="item-fecha">
-                <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲
-                toggle('abierto'); 
-            this.querySelector('.flecha').textContent = 
-              this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼"
-            ">
-                <span>📅 ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''} — Total: $${totalDia.toFixed(2)}</span>
-                <span class="flecha">▼</span>
-            </div>
-            <div class="contenido-fechas">
-                <table class="tabla-resumen">
-                    <tr><th>Material</th><th>Cantidad</th><th>Subtotal</th></tr>
-                    ${listaMateriales.map(m => `
-                      <tr>
-                        <td>${m.nombre}</td>
-                        <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
-                        <td>$${m.subtotal.toFixed(2)}</td>
-                      </tr>
-                    `).join('')}
-                    <tr class="fila-total-general">
-                        <td colspan="2">TOTAL DEL DÍA</td>
-                        <td>$${totalDia.toFixed(2)}</td>
-                    </tr>
-                </table>
-            </div>
-        </div>`;
+                <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼'">
+                    <span>📅 ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''} — Total: $${totalDia.toFixed(2)}</span>
+                    <span class="flecha">▼</span>
+                </div>
+                <div class="contenido-fechas">
+                    <table class="tabla-resumen">
+                        <tr><th>Material</th><th>Cantidad</th><th>Subtotal</th></tr>
+                        ${listaMateriales.map(m => `
+                          <tr>
+                            <<td>${m.nombre}</td>
+                            <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
+                            <td>$${m.subtotal.toFixed(2)}</td>
+                          </tr>`
+                        ).join('')}
+                        <tr class="fila-total-general">
+                            <td colspan="2">TOTAL DEL DÍA</td>
+                            <td>$${totalDia.toFixed(2)}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>`;
         });
-        
         htmlFinal += `
-        <div class="fila-total-general" style="padding:12px; font-size:16px; text-align:center;">
+        <div class="fila-total-general" style="padding:12px; font-size:15px; margin-top:10px;">
             💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}
         </div>`;
-    } 
-    else {
-        // === MODO ACUMULADO ===
+    }
+
+    if(modoVista === 'acumulado') {
         const acumulado = {};
         mostrar.forEach(compra => {
             if(compra.detalles) compra.detalles.forEach(item => {
@@ -829,49 +811,53 @@ function dibujarTotales(listaPersonalizada = null){
                 acumulado[item.nombre].subtotal += Number(item.subtotal) || 0;
             });
         });
-        
         const listaAcumulada = Object.values(acumulado);
-        const totalGeneral = listaAcumulada.reduce((s, m) => s + m.subtotal, 0);
-        
+        const granTotal = listaAcumulada.reduce((s, m) => s + m.subtotal, 0);
+
         htmlFinal += `
-        <div class="item-fecha">
-            <div class="titulo-fecha" style="background:#f3e5f5; color:#7b1fa2;">
-                <span>📊 TOTAL ACUMULADO</span>
-                <span class="flecha">▼</span>
-            </div>
-            <div class="contenido-fechas abierto">
-                <table class="tabla-resumen">
-                    <tr><th>Material</th><th>Cantidad Total</th><th>Subtotal</th></tr>
-                    ${listaAcumulada.map(m => `
-                      <tr>
-                        <td>${m.nombre}</td>
-                        <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
-                        <td>$${m.subtotal.toFixed(2)}</td>
-                      </tr>
-                    `).join('')}
-                    <tr class="fila-total-general">
-                        <td colspan="2">💰 TOTAL GENERAL</td>
-                        <td>$${totalGeneral.toFixed(2)}</td>
-                    </tr>
-                </table>
-            </div>
-        </div>`;
+        <table class="tabla-resumen" style="margin-top:10px;">
+            <tr style="background:#7b1fa2; color:white;">
+                <th colspan="3" style="text-align:center; font-size:15px;">📊 TOTAL ACUMULADO GENERAL</th>
+            </tr>
+            <tr>
+                <th>Material</th>
+                <th>Cantidad Total</th>
+                <th>Subtotal Total</th>
+            </tr>
+            ${listaAcumulada.map(m => `
+                <tr>
+                    <td>${m.nombre}</td>
+                    <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
+                    <td>$${m.subtotal.toFixed(2)}</td>
+                </tr>`
+            ).join('')}
+            <tr class="fila-total-general">
+                <td colspan="2">💰 GRAN TOTAL</td>
+                <td>$${granTotal.toFixed(2)}</td>
+            </tr>
+        </table>`;
     }
 
     contenedor.innerHTML = htmlFinal;
-    aplicarPermisos();
 }
 
 function verCompraGuardada(compra, modo) {
     facturaActual = compra;
-    if(modo === 'cliente') mostrarCliente();
-    else mostrarDetallada();
+    if(modo === 'cliente') {
+        mostrarCliente();
+    } else {
+        mostrarDetallada();
+    }
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
     document.getElementById('btnVerCliente').style.display = 'inline-block';
     document.getElementById('btnEliminarFactura').style.display = esAdministrador ? 'inline-block' : 'none';
     document.getElementById("ventanaFactura").style.display = "flex";
 }
 
+// Inicio automático al cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+    // Si ya tenía sesión, se mantiene
+});
 </script>
 </body>
 </html>
