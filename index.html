@@ -10,6 +10,21 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
         body { background-color: #f0f8f0; padding: 8px; font-size: 13px; line-height: 1.4; }
+        
+        /* === PANTALLA DE INICIO / LOGIN === */
+        #pantallaLogin { position: fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg, #2e7d32, #4caf50); display:flex; align-items:center; justify-content:center; z-index:99999; }
+        .caja-login { background:white; padding:25px; border-radius:12px; width:90%; max-width:400px; text-align:center; box-shadow:0 4px 15px rgba(0,0,0,0.2); }
+        .caja-login h1 { color:#2e7d32; margin-bottom:20px; font-size:22px; }
+        .caja-login h2 { color:#555; font-size:16px; margin-bottom:25px; }
+        .btn-login { width:100%; padding:14px; border:none; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer; margin:8px 0; transition:transform 0.2s; }
+        .btn-login:hover { transform:scale(1.02); }
+        .btn-empleado { background:#e8f5e9; color:#1b5e20; }
+        .btn-admin { background:#2e7d32; color:white; }
+        .input-login { width:100%; padding:12px; margin:8px 0; border:2px solid #ddd; border-radius:8px; font-size:16px; }
+        .config-clave { margin-top:15px; padding-top:15px; border-top:1px dashed #ddd; }
+        .oculto { display:none !important; }
+        .solo-admin { display:none; }
+        
         .container { max-width: 100%; margin: 0 auto; background: #fff; padding: 12px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
         .logo-principal { display: block; max-width: 150px; margin: 0 auto 10px; }
         h1 { font-size: 18px; text-align: center; color: #2e7d32; margin-bottom: 12px; font-weight: 700; }
@@ -27,6 +42,7 @@
         .btn-cliente, .btn-detallada { padding: 4px 2px !important; font-size: 10.5px !important; min-width: 60px !important; width: auto !important; margin: 1px !important; }
         .btn-ver-historial { background-color: #795548; width: auto; color: white; font-weight: bold; }
         .btn-danger { background-color: #d32f2f; }
+        .btn-cerrar-sesion { background: #666; font-size:12px; padding:6px 10px; width:auto; margin-bottom:10px; }
         .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; margin: 6px 0; border-radius: 6px; border: 1px solid #e0e0e0; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
         th, td { border: 1px solid #e0e0e0; padding: 6px 4px; text-align: center; vertical-align: middle; }
@@ -67,7 +83,7 @@
         }
         @media print {
             body { background: white; padding: 0; font-size: 14px; }
-            .container, .btn-cerrar, button, .aviso, .section { display: none !important; }
+            .container, .btn-cerrar, button, .aviso, .section, .btn-cerrar-sesion { display: none !important; }
             #ventanaFactura { position: static; display: block !important; background: white; width: 100%; height: auto; padding: 0; }
             .caja-factura { width: 100%; max-width: 100%; padding: 12px; box-shadow: none; border: none; border-radius: 0; }
             .tabla-factura { font-size: 15px; }
@@ -77,7 +93,39 @@
 </head>
 <body>
 
-<div class="container">
+<!-- === PANTALLA DE INICIO DE SESIÓN === -->
+<div id="pantallaLogin">
+    <div class="caja-login">
+        <h1>♻️ Recicladora Alexander</h1>
+        <h2>¿Quién va a trabajar?</h2>
+        
+        <button class="btn-login btn-empleado" onclick="entrarComoEmpleado()">
+            🧑‍💼 Soy Empleado — Trabajar
+        </button>
+        
+        <button class="btn-login btn-admin" onclick="mostrarLoginAdmin()">
+            👑 Soy el Jefe — Administrador
+        </button>
+
+        <div id="cajaAdminClave" class="oculto">
+            <input type="password" id="claveAdminIngreso" class="input-login" placeholder="Escriba su contraseña">
+            <button class="btn-login btn-admin" onclick="verificarClaveYEntrar()">Entrar</button>
+            <button style="background:#eee; color:#333;" onclick="ocultarLoginAdmin()">Volver</button>
+        </div>
+
+        <div class="config-clave" id="zonaConfigClave">
+            <p style="color:#666; font-size:13px;">🔐 Si aún no tiene contraseña, cree la suya aquí:</p>
+            <input type="password" id="nuevaClave1" class="input-login" placeholder="Nueva contraseña">
+            <input type="password" id="nuevaClave2" class="input-login" placeholder="Repetir contraseña">
+            <button style="background:#ff9800; color:white;" onclick="guardarNuevaClave()">Guardar Contraseña</button>
+        </div>
+    </div>
+</div>
+
+<!-- === APLICACIÓN PRINCIPAL === -->
+<div class="container oculto" id="aplicacionPrincipal">
+    <button class="btn-cerrar-sesion" onclick="cerrarSesion()">🚪 Cerrar Sesión</button>
+    
     <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
     <h1>♻️ Recicladora Alexander</h1>
     <div class="aviso" id="estadoConexion">✅ Todo listo para trabajar</div>
@@ -104,7 +152,7 @@
                         <th>Material</th>
                         <th>Unidad</th>
                         <th>Precio</th>
-                        <th>Acción</th>
+                        <th class="solo-admin">Acción</th>
                     </tr>
                 </thead>
                 <tbody id="cuerpoTabla"></tbody>
@@ -162,6 +210,7 @@
             <button id="btnImprimir" onclick="window.print()">🖨️ Imprimir</button>
             <button class="btn-detallada" id="btnVerDetallada" style="display:none;" onclick="mostrarDetallada()">📋 Detallada</button>
             <button class="btn-cliente" id="btnVerCliente" style="display:none;" onclick="mostrarCliente()">🧾 Cliente</button>
+            <button class="btn-danger solo-admin" id="btnEliminarFactura" style="display:none;" onclick="eliminarFacturaActual()">🗑️ Eliminar Factura</button>
             <button class="btn-danger" onclick="cerrarVentana()">Cerrar</button>
         </div>
     </div>
@@ -180,18 +229,95 @@ let fechaHoy = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guaya
 let todasLasCompras = [];
 let datosPendientes = JSON.parse(localStorage.getItem('datosPendientes')) || [];
 let listaMateriales = [];
+let esAdministrador = false; // 🔐 Control de permisos
+let claveJefeGuardada = localStorage.getItem('claveJefe') || null;
+
+// ========== FUNCIONES DE INICIO DE SESIÓN ==========
+function entrarComoEmpleado() {
+    esAdministrador = false;
+    ingresarALaApp();
+}
+
+function mostrarLoginAdmin() {
+    if(!claveJefeGuardada) {
+        alert("🔐 Primero cree su contraseña abajo en la zona de configuración");
+        return;
+    }
+    document.getElementById('cajaAdminClave').classList.remove('oculto');
+}
+
+function ocultarLoginAdmin() {
+    document.getElementById('cajaAdminClave').classList.add('oculto');
+}
+
+function verificarClaveYEntrar() {
+    const claveIngresada = document.getElementById('claveAdminIngreso').value;
+    if(claveIngresada === claveJefeGuardada) {
+        esAdministrador = true;
+        ingresarALaApp();
+    } else {
+        alert("❌ Contraseña incorrecta");
+    }
+}
+
+function guardarNuevaClave() {
+    const c1 = document.getElementById('nuevaClave1').value.trim();
+    const c2 = document.getElementById('nuevaClave2').value.trim();
+    
+    if(!c1 || c1.length < 3) return alert("Escriba una contraseña de al menos 3 caracteres");
+    if(c1 !== c2) return alert("Las contraseñas no coinciden");
+    
+    claveJefeGuardada = c1;
+    localStorage.setItem('claveJefe', c1);
+    alert("✅ Contraseña guardada correctamente!\nGuárdela bien, solo usted la sabe 🔑");
+    document.getElementById('nuevaClave1').value = '';
+    document.getElementById('nuevaClave2').value = '';
+    document.getElementById('zonaConfigClave').style.display = 'none';
+}
+
+function ingresarALaApp() {
+    document.getElementById('pantallaLogin').classList.add('oculto');
+    document.getElementById('aplicacionPrincipal').classList.remove('oculto');
+    
+    // Mostrar/ocultar elementos solo para administrador
+    aplicarPermisos();
+    
+    // Iniciar la app
+    supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
+    actualizarEstadoConexion(navigator.onLine);
+    cargarMateriales();
+    cargarHistorialYTotales();
+    sincronizarPendientes();
+}
+
+function aplicarPermisos() {
+    const elementosAdmin = document.querySelectorAll('.solo-admin');
+    elementosAdmin.forEach(el => {
+        el.style.display = esAdministrador ? '' : 'none';
+    });
+}
+
+function cerrarSesion() {
+    if(confirm("¿Cerrar sesión?")) {
+        document.getElementById('pantallaLogin').classList.remove('oculto');
+        document.getElementById('aplicacionPrincipal').classList.add('oculto');
+        document.getElementById('claveAdminIngreso').value = '';
+        ocultarLoginAdmin();
+        esAdministrador = false;
+    }
+}
+
+// Ocultar zona de crear clave si ya tiene una
+if(claveJefeGuardada) {
+    document.getElementById('zonaConfigClave').style.display = 'none';
+}
 
 function generarClaveUnica(compra) {
     return `${compra.fecha||''}-${compra.hora||''}-${compra.total||0}-${JSON.stringify(compra.detalles||[])}`;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-    supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
-    actualizarEstadoConexion(navigator.onLine);
-    await cargarMateriales();
-    await cargarHistorialYTotales();
-    await sincronizarPendientes();
-});
+window.addEventListener('online', () => { actualizarEstadoConexion(true); sincronizarPendientes(); });
+window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
 function actualizarEstadoConexion(conectado) {
     const aviso = document.getElementById('estadoConexion');
@@ -203,9 +329,6 @@ function actualizarEstadoConexion(conectado) {
         aviso.classList.add('sin-conexion');
     }
 }
-
-window.addEventListener('online', () => { actualizarEstadoConexion(true); sincronizarPendientes(); });
-window.addEventListener('offline', () => actualizarEstadoConexion(false));
 
 // ========== MATERIALES ==========
 async function cargarMateriales(){
@@ -257,11 +380,11 @@ async function guardarMaterial(){
     
     try {
         const { error } = await supabaseCliente.from('materiales').insert([nuevo]);
-        alert(!error ? '✅ Material guardado perfectamente sin redondear' : '⚠️ Guardado en el dispositivo, se subirá al tener internet');
+        alert(!error ? '✅ Material guardado' : '⚠️ Guardado localmente');
     } catch {
         datosPendientes.push({tipo:'material', datos:nuevo});
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-        alert('⚠️ Guardado localmente, se sincronizará luego');
+        alert('⚠️ Guardado localmente');
     }
     
     document.getElementById('nombreMaterial').value = '';
@@ -276,10 +399,13 @@ function actualizarTablaMateriales(lista){
         cuerpo.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#666;">No hay materiales aún</td></tr>`;
         return;
     }
-    cuerpo.innerHTML = lista.map((m, i) => `<tr><td>${m.nombre}</td><td>${m.unidad}</td><td>$${Number(m.precio_unitario).toFixed(3)}</td><td><button class="btn-danger" onclick="eliminarMaterial(${m.id || `'l-${i}'`})">Eliminar</button></td></tr>`).join('');
+    cuerpo.innerHTML = lista.map((m, i) => `<tr><td>${m.nombre}</td><td>${m.unidad}</td><td>$${Number(m.precio_unitario).toFixed(3)}</td><td class="solo-admin"><button class="btn-danger" onclick="eliminarMaterial(${JSON.stringify(m.id || `l-${i}`)})">Eliminar</button></td></tr>`).join('');
+    aplicarPermisos();
 }
 
 async function eliminarMaterial(id){
+    if(!esAdministrador) return alert("🔒 Solo el Jefe puede eliminar materiales");
+    
     if(String(id).startsWith('l-')) {
         const indice = Number(id.split('-')[1]);
         listaMateriales.splice(indice,1);
@@ -308,7 +434,7 @@ function actualizarSelectMateriales(lista){
     select.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${Number(m.precio_unitario).toFixed(3)}/${m.unidad}</option>`).join('');
 }
 
-// ========== COMPRAS ==========
+// ========== COMPRAS / FACTURAS ==========
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
@@ -375,7 +501,7 @@ async function generarFacturas(){
     if(!subido) {
         datosPendientes.push({tipo:'compra', datos:nuevaCompra});
         localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-        alert("✅ Guardado en su dispositivo, se sincronizará al conectarse");
+        alert("✅ Guardado localmente");
     } else {
         alert("✅ Factura guardada exitosamente");
         datosPendientes = datosPendientes.filter(item => generarClaveUnica(item.datos) !== claveUnica);
@@ -386,13 +512,41 @@ async function generarFacturas(){
     mostrarCliente();
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
     document.getElementById('btnVerCliente').style.display = 'inline-block';
+    document.getElementById('btnEliminarFactura').style.display = esAdministrador ? 'inline-block' : 'none';
     document.getElementById("ventanaFactura").style.display = "flex";
     carrito = [];
     actualizarCarrito();
     await cargarHistorialYTotales();
 }
 
-// ========== FACTURAS ==========
+// ========== ELIMINAR FACTURA (SOLO JEFE) ==========
+async function eliminarFacturaActual() {
+    if(!esAdministrador) return alert("🔒 Solo el Jefe puede eliminar facturas");
+    if(!facturaActual) return;
+    
+    if(!confirm(`⚠️ ¿Eliminar ESTA FACTURA por completo?\nSe borrará de la base de datos y no se podrá recuperar.\n\nFecha: ${facturaActual.fecha} — Total: $${facturaActual.total.toFixed(2)}`)) return;
+
+    const claveBorrar = generarClaveUnica(facturaActual);
+    
+    try {
+        // Quitar de la lista local
+        todasLasCompras = todasLasCompras.filter(c => generarClaveUnica(c) !== claveBorrar);
+        localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
+        
+        // Reemplazar en la base
+        if(navigator.onLine) {
+            await supabaseCliente.from('compras').upsert(todasLasCompras);
+        }
+        
+        alert("✅ Factura ELIMINADA de la base de datos");
+        cerrarVentana();
+        await cargarHistorialYTotales();
+        
+    } catch (err) {
+        alert(`⚠️ Error: ${err.message}`);
+    }
+}
+
 function mostrarCliente(){
     if(!facturaActual) return;
     let agrupado = {};
@@ -439,9 +593,10 @@ function cerrarVentana(){
     facturaActual = null;
     document.getElementById('btnVerDetallada').style.display = 'none';
     document.getElementById('btnVerCliente').style.display = 'none';
+    document.getElementById('btnEliminarFactura').style.display = 'none';
 }
 
-// ========== SINCRONIZACIÓN Y CARGA ==========
+// ========== CARGA Y SINCRONIZACIÓN ==========
 function alternarVerTodosDias(){
     verTodosLosDiasActivo = !verTodosLosDiasActivo;
     const btn = document.getElementById('btnVerTodosDias');
@@ -474,26 +629,22 @@ async function cargarHistorialYTotales(){
     } catch {
         todasLasCompras = comprasLocales;
         actualizarVistas();
-        mostrarAviso("⚠️ Sin conexión: mostrando datos guardados en el dispositivo");
+        mostrarAviso("⚠️ Sin conexión: mostrando datos locales");
         return;
     }
 
     const clavesValidas = new Set();
     comprasNube.forEach(c => clavesValidas.add(generarClaveUnica(c)));
-
     const mapaUnico = new Map();
     comprasNube.forEach(c => mapaUnico.set(generarClaveUnica(c), c));
-
     comprasLocales.forEach(c => {
         const clave = generarClaveUnica(c);
         if(!clavesValidas.has(clave)) mapaUnico.set(clave, c);
     });
-
     todasLasCompras = Array.from(mapaUnico.values());
     localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
-
     actualizarVistas();
-    mostrarAviso("✅ Datos sincronizados: solo se muestra lo registrado en la base de datos");
+    mostrarAviso("✅ Datos sincronizados");
 }
 
 function mostrarAviso(texto){
@@ -519,7 +670,7 @@ async function sincronizarPendientes(){
     }
     datosPendientes = quedan;
     localStorage.setItem('datosPendientes', JSON.stringify(datosPendientes));
-    if(subidos > 0) alert(`✅ Se sincronizaron ${subidos} registros`);
+    if(subidos > 0) alert(`✅ Sincronizados ${subidos} registros`);
     await cargarHistorialYTotales();
 }
 
@@ -554,14 +705,37 @@ function dibujarHistorial(listaPersonalizada = null){
             </div>
             <div class="contenido-fechas">
                 <table class="tabla-resumen">
-                    <tr><th>Hora</th><th>Total</th><th>Recibo Cliente</th><th>Detalle Completo</th></tr>
-                    ${agrupadas[fecha].map(c => `<tr><td>${c.hora}</td><td>$${c.total.toFixed(2)}</td><td><button class="btn-cliente" onclick='verCompraGuardada(${JSON.stringify(c).replace(/'/g,"&#39;")},"cliente")'>Ver</button></td><td><button class="btn-detallada" onclick='verCompraGuardada(${JSON.stringify(c).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td></tr>`).join('')}
+                    <tr><th>Hora</th><th>Total</th><th>Recibo</th><th>Detalle</th>${esAdministrador ? '<th class="solo-admin">Eliminar</th>' : ''}
+                    </tr>
+                    ${agrupadas[fecha].map(c => `<tr><td>${c.hora}</td><td>$${c.total.toFixed(2)}</td><td><button class="btn-cliente" onclick='verCompraGuardada(${JSON.stringify(c).replace(/'/g,"&#39;")},"cliente")'>Ver</button></td><td><button class="btn-detallada" onclick='verCompraGuardada(${JSON.stringify(c).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td>${esAdministrador ? `<td class="solo-admin"><button class="btn-danger" onclick='eliminarFacturaDirecta(${JSON.stringify(c).replace(/'/g,"&#39;")})'>🗑️</button></td>` : ''}</tr>`).join('')}
                 </table>
             </div>
         </div>`).join('');
+    aplicarPermisos();
+}
+
+async function eliminarFacturaDirecta(compra) {
+    if(!esAdministrador) return alert("🔒 Solo el Jefe puede eliminar");
+    if(!confirm(`⚠️ ¿Eliminar esta factura?\nFecha: ${compra.fecha} — $${compra.total.toFixed(2)}`)) return;
+    
+    const claveBorrar = generarClaveUnica(compra);
+    todasLasCompras = todasLasCompras.filter(c => generarClaveUnica(c) !== claveBorrar);
+    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
+    
+    if(navigator.onLine) {
+        await supabaseCliente.from('compras').upsert(todasLasCompras);
+    }
+    
+    alert("✅ Factura eliminada");
+    actualizarVistas();
 }
 
 let modoVista = 'dias';
+
+function cambiarModoVista(tipo) {
+    modoVista = tipo;
+    dibujarTotales();
+}
 
 function dibujarTotales(listaPersonalizada = null){
     const lista = listaPersonalizada || todasLasCompras;
@@ -585,194 +759,119 @@ function dibujarTotales(listaPersonalizada = null){
             if(!agrupadasPorFecha[c.fecha]) agrupadasPorFecha[c.fecha] = []; 
             agrupadasPorFecha[c.fecha].push(c); 
         });
-
         const fechas = Object.keys(agrupadasPorFecha).sort((a,b) => {
             const [da,ma,ya] = a.split('/').map(Number);
             const [db,mb,yb] = b.split('/').map(Number);
             return new Date(yb, mb-1, db) - new Date(ya, ma-1, da);
         });
-
         let totalGeneral = 0;
-
         fechas.forEach(fecha => {
             const comprasDelDia = agrupadasPorFecha[fecha];
             const totalDia = comprasDelDia.reduce((s,c) => s + Number(c.total || 0), 0);
             totalGeneral += totalDia;
-
             const materialesDelDia = {};
             comprasDelDia.forEach(compra => {
-                if(compra.detalles) {
-                    compra.detalles.forEach(item => {
-                        if(!materialesDelDia[item.nombre]) {
-                            materialesDelDia[item.nombre] = {
-                                nombre: item.nombre,
-                                cantidad: 0,
-                                subtotal: 0,
-                                unidad: item.unidad || 'Libra'
-                            };
-                        }
-                        materialesDelDia[item.nombre].cantidad += Number(item.cantidad) || 0;
-                        materialesDelDia[item.nombre].subtotal += Number(item.subtotal) || 0;
-                    });
-                }
+                if(compra.detalles) compra.detalles.forEach(item => {
+                    if(!materialesDelDia[item.nombre]) materialesDelDia[item.nombre] = {nombre:item.nombre, cantidad:0, subtotal:0, unidad:item.unidad||'Libra'};
+                    materialesDelDia[item.nombre].cantidad += Number(item.cantidad) || 0;
+                    materialesDelDia[item.nombre].subtotal += Number(item.subtotal) || 0;
+                });
             });
-
             const listaMateriales = Object.values(materialesDelDia);
-
             htmlFinal += `
             <div class="item-fecha">
-                <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼'">
-                    <span>📅 Día: ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''}</span>
-                    <span class="flecha">▼</span>
-                </div>
-                <div class="contenido-fechas">
-                    <table class="tabla-resumen">
-                        <tr style="background:#e8f5e9;">
-                            <th>Material</th>
-                            <th>Peso Total</th>
-                            <th>Monto Total</th>
-                            <th>Acción</th>
-                        </tr>
-                        ${listaMateriales.map(mat => `
-                        <tr>
-                            <td>${mat.nombre}</td>
-                            <td>${mat.cantidad.toFixed(1)} ${mat.unidad}</td>
-                            <td>$${mat.subtotal.toFixed(2)}</td>
-                            <td><button class="btn-danger" onclick="eliminarMaterialDelDia('${fecha}', '${mat.nombre}')">🗑️ Eliminar</button></td>
-                        </tr>`).join('')}
-                        <tr class="fila-total-general">
-                            <td colspan="2">Total del día</td>
-                            <td colspan="2">$${totalDia.toFixed(2)}</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>`;
+                <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲
+                toggle('abierto'); 
+            this.querySelector('.flecha').textContent = 
+              this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼"
+            ">
+                <span>📅 ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''} — Total: $${totalDia.toFixed(2)}</span>
+                <span class="flecha">▼</span>
+            </div>
+            <div class="contenido-fechas">
+                <table class="tabla-resumen">
+                    <tr><th>Material</th><th>Cantidad</th><th>Subtotal</th></tr>
+                    ${listaMateriales.map(m => `
+                      <tr>
+                        <td>${m.nombre}</td>
+                        <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
+                        <td>$${m.subtotal.toFixed(2)}</td>
+                      </tr>
+                    `).join('')}
+                    <tr class="fila-total-general">
+                        <td colspan="2">TOTAL DEL DÍA</td>
+                        <td>$${totalDia.toFixed(2)}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>`;
         });
-
-        htmlFinal += `<div style="text-align:right; font-weight:bold; font-size:15px; margin-top:10px;">💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}</div>`;
-    }
-
-    if(modoVista === 'acumulado') {
-        const desgloseGlobal = {};
-        mostrar.forEach(compra => {
-            if(compra.detalles) {
-                compra.detalles.forEach(item => {
-                    if(!desgloseGlobal[item.nombre]) {
-                        desgloseGlobal[item.nombre] = {
-                            nombre: item.nombre,
-                            cantidad: 0,
-                            subtotal: 0,
-                            unidad: item.unidad || 'Libra'
-                        };
-                    }
-                    desgloseGlobal[item.nombre].cantidad += Number(item.cantidad) || 0;
-                    desgloseGlobal[item.nombre].subtotal += Number(item.subtotal) || 0;
-                });
-            }
-        });
-
-        const listaAcumulada = Object.values(desgloseGlobal);
-        const totalAcumulado = listaAcumulada.reduce((s,m) => s + m.subtotal, 0);
-
+        
         htmlFinal += `
-        <div class="section" style="border-color:#7b1fa2; background:#faf5ff;">
-            <h2 style="color:#7b1fa2; text-align:center;">📊 TOTAL ACUMULADO GENERAL</h2>
-            <table class="tabla-resumen">
-                <tr style="background:#e1bee7;">
-                    <th>Material</th>
-                    <th>Peso Total</th>
-                    <th>Monto Total</th>
-                    <th>Acción</th>
-                </tr>
-                ${listaAcumulada.map(mat => `
-                <tr>
-                    <td>${mat.nombre}</td>
-                    <td>${mat.cantidad.toFixed(1)} ${mat.unidad}</td>
-                    <td>$${mat.subtotal.toFixed(2)}</td>
-                    <td><button class="btn-danger" onclick="reiniciarMaterialAcumulado('${mat.nombre}')">🔄 Liquidar / Reiniciar</button></td>
-                </tr>`).join('')}
-                <tr class="fila-total-general">
-                    <td colspan="2">💰 TOTAL GENERAL</td>
-                    <td colspan="2">$${totalAcumulado.toFixed(2)}</td>
-                </tr>
-            </table>
+        <div class="fila-total-general" style="padding:12px; font-size:16px; text-align:center;">
+            💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}
+        </div>`;
+    } 
+    else {
+        // === MODO ACUMULADO ===
+        const acumulado = {};
+        mostrar.forEach(compra => {
+            if(compra.detalles) compra.detalles.forEach(item => {
+                if(!acumulado[item.nombre]) {
+                    acumulado[item.nombre] = {
+                        nombre: item.nombre,
+                        cantidad: 0,
+                        subtotal: 0,
+                        unidad: item.unidad || 'Libra'
+                    };
+                }
+                acumulado[item.nombre].cantidad += Number(item.cantidad) || 0;
+                acumulado[item.nombre].subtotal += Number(item.subtotal) || 0;
+            });
+        });
+        
+        const listaAcumulada = Object.values(acumulado);
+        const totalGeneral = listaAcumulada.reduce((s, m) => s + m.subtotal, 0);
+        
+        htmlFinal += `
+        <div class="item-fecha">
+            <div class="titulo-fecha" style="background:#f3e5f5; color:#7b1fa2;">
+                <span>📊 TOTAL ACUMULADO</span>
+                <span class="flecha">▼</span>
+            </div>
+            <div class="contenido-fechas abierto">
+                <table class="tabla-resumen">
+                    <tr><th>Material</th><th>Cantidad Total</th><th>Subtotal</th></tr>
+                    ${listaAcumulada.map(m => `
+                      <tr>
+                        <td>${m.nombre}</td>
+                        <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
+                        <td>$${m.subtotal.toFixed(2)}</td>
+                      </tr>
+                    `).join('')}
+                    <tr class="fila-total-general">
+                        <td colspan="2">💰 TOTAL GENERAL</td>
+                        <td>$${totalGeneral.toFixed(2)}</td>
+                    </tr>
+                </table>
+            </div>
         </div>`;
     }
 
     contenedor.innerHTML = htmlFinal;
+    aplicarPermisos();
 }
 
-function cambiarModoVista(tipo) {
-    modoVista = tipo;
-    dibujarTotales();
-}
-
-async function eliminarMaterialDelDia(fecha, nombreMaterial) {
-    if(!confirm(`¿Eliminar «${nombreMaterial}» del día ${fecha}?\nLo quitarás solo de este día, se guarda como despachado.`)) return;
-
-    todasLasCompras.forEach(compra => {
-        if(compra.fecha === fecha && compra.detalles) {
-            compra.detalles = compra.detalles.filter(item => item.nombre !== nombreMaterial);
-        }
-    });
-
-    todasLasCompras = todasLasCompras.filter(c => c.detalles && c.detalles.length > 0);
-
-    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
-    if(navigator.onLine) await supabaseCliente.from('compras').upsert(todasLasCompras);
-
-    alert(`✅ «${nombreMaterial}» eliminado del día ${fecha}`);
-    actualizarVistas();
-}
-
-async function reiniciarMaterialAcumulado(nombreMaterial) {
-    if(!confirm(`¿Seguro quieres liquidar y reiniciar «${nombreMaterial}»?\nSe borrará todo su acumulado para empezar de cero.`)) return;
-
-    todasLasCompras.forEach(compra => {
-        if(compra.detalles) {
-            compra.detalles = compra.detalles.filter(item => item.nombre !== nombreMaterial);
-        }
-    });
-
-    todasLasCompras = todasLasCompras.filter(c => c.detalles && c.detalles.length > 0);
-
-    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
-    if(navigator.onLine) await supabaseCliente.from('compras').upsert(todasLasCompras);
-
-    alert(`✅ «${nombreMaterial}» liquidado y reiniciado correctamente`);
-    actualizarVistas();
-}
-
-async function despacharMaterial(nombreMaterial){
-    if(!confirm(`¿Seguro quieres reiniciar el total de ${nombreMaterial}?\nSe guardará como despachado y empezarás de cero con este material.`)) return;
-
-    todasLasCompras.forEach(compra => {
-        compra.detalles = compra.detalles.filter(item => item.nombre !== nombreMaterial);
-    });
-
-    todasLasCompras = todasLasCompras.filter(c => c.detalles.length > 0);
-
-    localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
-
-    if(navigator.onLine) {
-        try {
-            await supabaseCliente.from('compras').upsert(todasLasCompras);
-        } catch {
-            alert('Se guardó en su dispositivo, se actualizará al conectarse');
-        }
-    }
-
-    alert(`✅ ${nombreMaterial} se ha despachado correctamente, listo para empezar de cero`);
-    actualizarVistas();
-}
-
-function verCompraGuardada(c,t){
-    facturaActual = c;
-    t==="cliente"?mostrarCliente():mostrarDetallada();
+function verCompraGuardada(compra, modo) {
+    facturaActual = compra;
+    if(modo === 'cliente') mostrarCliente();
+    else mostrarDetallada();
     document.getElementById('btnVerDetallada').style.display = 'inline-block';
     document.getElementById('btnVerCliente').style.display = 'inline-block';
+    document.getElementById('btnEliminarFactura').style.display = esAdministrador ? 'inline-block' : 'none';
     document.getElementById("ventanaFactura").style.display = "flex";
 }
+
 </script>
 </body>
 </html>
