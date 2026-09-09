@@ -442,7 +442,7 @@ function actualizarCarrito(){
     } else {
         lista.innerHTML = `<table class="tabla-resumen">
             <tr><th>Material</th><th>Peso</th><th>Precio U.</th><th>Subtotal</th><th>Quitar</th></tr>
-            ${carrito.map((item,i) => `<tr><td>${item.nombre}</td><td>${item.cantidad}</td><td>$${item.precio.toFixed(3)}</td><td>$${item.subtotal.toFixed(3)}</td><td><button class="btn-quitar" onclick="quitarDelCarrito(${i})">❌</button></td></tr>`).join('')}
+            ${carrito.map((item,i) => `<tr><td>${item.nombre}</td><td>${item.cantidad}</td><td>$${item.precio.toFixed(3)}</td><td>$${item.subtotal.toFixed(2)}</td><td><button class="btn-quitar" onclick="quitarDelCarrito(${i})">❌</button></td></tr>`).join('')}
         </table>`;
     }
     const total = carrito.reduce((s,i) => s + i.subtotal, 0);
@@ -749,23 +749,22 @@ async function eliminarMaterialDelAcumulado(nombreMaterial) {
     
     alert(`✅ "${nombreMaterial}" DESPACHADO.\nYa empieza desde cero con compras nuevas.`);
     actualizarVistas();
-}
-
-function dibujarTotales(listaPersonalizada = null){
+}function dibujarTotales(listaPersonalizada = null){
     const lista = listaPersonalizada || todasLasCompras;
     const contenedor = document.getElementById('listaTotalesPorDia');
     const mostrar = verTodosLosDiasActivo ? lista : lista.filter(c => c.fecha === fechaHoy);
     
-    if(mostrar.length === 0){
-        contenedor.innerHTML = `<p style="text-align:center; color:#666; padding:10px;">Sin compras para mostrar</p>`;
-        return;
-    }
-
     let htmlFinal = `
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
-        <button onclick="cambiarModoVista('dias')" style="${modoVista==='dias'?'background:#2e7d32; color:white;':'background:#e0e0e0; color:#333;'} border-radius:6px; padding:8px;">📅 Ver por Días</button>
-        <button onclick="cambiarModoVista('acumulado')" style="${modoVista==='acumulado'?'background:#7b1fa2; color:white;':'background:#e0e0e0; color:#333;'} border-radius:6px; padding:8px;">📊 Ver Total Acumulado</button>
+        <button onclick="cambiarModoVista('dias')" style="${modoVista==='dias'?'background:#2e7d32; color:white; font-weight:bold;':'background:#e0e0e0; color:#333;'} border-radius:6px; padding:10px; border:none; font-size:14px;">📅 Ver por Días</button>
+        <button onclick="cambiarModoVista('acumulado')" style="${modoVista==='acumulado'?'background:#7b1fa2; color:white; font-weight:bold;':'background:#e0e0e0; color:#333;'} border-radius:6px; padding:10px; border:none; font-size:14px;">📊 Ver Total Acumulado</button>
     </div>`;
+
+    if(mostrar.length === 0){
+        htmlFinal += `<p style="text-align:center; color:#666; padding:20px;">Sin compras para mostrar</p>`;
+        contenedor.innerHTML = htmlFinal;
+        return;
+    }
 
     if(modoVista === 'dias') {
         const agrupadasPorFecha = {};
@@ -778,24 +777,34 @@ function dibujarTotales(listaPersonalizada = null){
             const [db,mb,yb] = b.split('/').map(Number);
             return new Date(yb, mb-1, db) - new Date(ya, ma-1, da);
         });
+
         let totalGeneral = 0;
         fechas.forEach(fecha => {
             const comprasDelDia = agrupadasPorFecha[fecha];
             const totalDia = comprasDelDia.reduce((s,c) => s + Number(c.total || 0), 0);
             totalGeneral += totalDia;
+            
             const materialesDelDia = {};
             comprasDelDia.forEach(compra => {
-                if(compra.detalles) compra.detalles.forEach(item => {
-                    if(!materialesDelDia[item.nombre]) materialesDelDia[item.nombre] = {nombre:item.nombre, cantidad:0, subtotal:0, unidad:item.unidad||'Libra'};
-                    materialesDelDia[item.nombre].cantidad += Number(item.cantidad) || 0;
-                    materialesDelDia[item.nombre].subtotal += Number(item.subtotal) || 0;
-                });
-                });
+                if(compra.detalles) {
+                    compra.detalles.forEach(item => {
+                        if(!materialesDelDia[item.nombre]) {
+                            materialesDelDia[item.nombre] = {
+                                nombre: item.nombre,
+                                cantidad: 0,
+                                subtotal: 0,
+                                unidad: item.unidad || 'Libra'
+                            };
+                        }
+                        materialesDelDia[item.nombre].cantidad += Number(item.cantidad) || 0;
+                        materialesDelDia[item.nombre].subtotal += Number(item.subtotal) || 0;
+                    });
+                }
             });
 
-        const listaMateriales = Object.values(materialesDelDia);
+            const listaMateriales = Object.values(materialesDelDia);
 
-        htmlFinal += `
+            htmlFinal += `
             <div class="item-fecha">
                 <div class="titulo-fecha" onclick="this.nextElementSibling.classList.toggle('abierto'); this.querySelector('.flecha').textContent = this.nextElementSibling.classList.contains('abierto') ? '▲' : '▼'">
                     <span>📅 ${fecha} ${fecha === fechaHoy ? '(HOY)' : ''} — Total: $${totalDia.toFixed(2)}</span>
@@ -824,27 +833,30 @@ function dibujarTotales(listaPersonalizada = null){
                     </table>
                 </div>
             </div>`;
+        });
 
         htmlFinal += `
         <div class="fila-total-general" style="padding:12px; margin-top:10px; border-radius:6px;">
-            TOTAL GENERAL: $${totalGeneral.toFixed(2)}
+            💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}
         </div>`;
     } 
     else {
         const acumuladoPorMaterial = {};
         mostrar.forEach(compra => {
-            if(compra.detalles) compra.detalles.forEach(item => {
-                if(!acumuladoPorMaterial[item.nombre]) {
-                    acumuladoPorMaterial[item.nombre] = {
-                        nombre: item.nombre,
-                        cantidad: 0,
-                        subtotal: 0,
-                        unidad: item.unidad || 'Libra'
-                    };
-                }
-                acumuladoPorMaterial[item.nombre].cantidad += Number(item.cantidad) || 0;
-                acumuladoPorMaterial[item.nombre].subtotal += Number(item.subtotal) || 0;
-            });
+            if(compra.detalles) {
+                compra.detalles.forEach(item => {
+                    if(!acumuladoPorMaterial[item.nombre]) {
+                        acumuladoPorMaterial[item.nombre] = {
+                            nombre: item.nombre,
+                            cantidad: 0,
+                            subtotal: 0,
+                            unidad: item.unidad || 'Libra'
+                        };
+                    }
+                    acumuladoPorMaterial[item.nombre].cantidad += Number(item.cantidad) || 0;
+                    acumuladoPorMaterial[item.nombre].subtotal += Number(item.subtotal) || 0;
+                });
+            }
         });
 
         const listaAcumulada = Object.values(acumuladoPorMaterial);
