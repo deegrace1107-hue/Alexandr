@@ -11,7 +11,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
         body { background-color: #f0f8f0; padding: 8px; font-size: 13px; line-height: 1.4; }
         
-        /* === PANTALLA DE INICIO / LOGIN === */
         #pantallaLogin { position: fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg, #2e7d32, #4caf50); display:flex; align-items:center; justify-content:center; z-index:99999; }
         .caja-login { background:white; padding:25px; border-radius:12px; width:90%; max-width:400px; text-align:center; box-shadow:0 4px 15px rgba(0,0,0,0.2); }
         .caja-login h1 { color:#2e7d32; margin-bottom:20px; font-size:22px; }
@@ -23,7 +22,6 @@
         .input-login { width:100%; padding:12px; margin:8px 0; border:2px solid #ddd; border-radius:8px; font-size:16px; }
         .config-clave { margin-top:15px; padding-top:15px; border-top:1px dashed #ddd; }
         .oculto { display:none !important; }
-        .solo-admin { display:none; }
         
         .container { max-width: 100%; margin: 0 auto; background: #fff; padding: 12px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
         .logo-principal { display: block; max-width: 150px; margin: 0 auto 10px; }
@@ -93,7 +91,6 @@
 </head>
 <body>
 
-<!-- === PANTALLA DE INICIO DE SESIÓN === -->
 <div id="pantallaLogin">
     <div class="caja-login">
         <h1>♻️ Recicladora Alexander</h1>
@@ -122,11 +119,10 @@
     </div>
 </div>
 
-<!-- === APLICACIÓN PRINCIPAL === -->
 <div class="container oculto" id="aplicacionPrincipal">
     <button class="btn-cerrar-sesion" onclick="cerrarSesion()">🚪 Cerrar Sesión</button>
     
-    <img src="logo.png" alt="Recicladora Alexander" class="logo-principal">
+    <img src="logo.png" alt="Recicladora Alexander" class="logo-principal" onerror="this.style.display='none'">
     <h1>♻️ Recicladora Alexander</h1>
     <div class="aviso" id="estadoConexion">✅ Todo listo para trabajar</div>
 
@@ -210,7 +206,7 @@
             <button id="btnImprimir" onclick="window.print()">🖨️ Imprimir</button>
             <button class="btn-detallada" id="btnVerDetallada" style="display:none;" onclick="mostrarDetallada()">📋 Detallada</button>
             <button class="btn-cliente" id="btnVerCliente" style="display:none;" onclick="mostrarCliente()">🧾 Cliente</button>
-            <button class="btn-danger solo-admin" id="btnEliminarFactura" style="display:none;" onclick="eliminarFacturaActual()">🗑️ Eliminar Factura</button>
+            <button class="btn-danger" id="btnEliminarFactura" style="display:none;" onclick="eliminarFacturaActual()">🗑️ Eliminar Factura</button>
             <button class="btn-danger" onclick="cerrarVentana()">Cerrar</button>
         </div>
     </div>
@@ -232,7 +228,6 @@ let listaMateriales = [];
 let esAdministrador = false;
 let claveJefeGuardada = localStorage.getItem('claveJefe') || null;
 
-// ========== INICIO DE SESIÓN ==========
 function entrarComoEmpleado() {
     esAdministrador = false;
     ingresarALaApp();
@@ -276,23 +271,11 @@ function guardarNuevaClave() {
 function ingresarALaApp() {
     document.getElementById('pantallaLogin').classList.add('oculto');
     document.getElementById('aplicacionPrincipal').classList.remove('oculto');
-    aplicarPermisos();
     supabaseCliente = supabase.createClient(URL_SUPABASE, CLAVE_SUPABASE);
     actualizarEstadoConexion(navigator.onLine);
     cargarMateriales();
     cargarHistorialYTotales();
     sincronizarPendientes();
-}
-
-function aplicarPermisos() {
-    const elementosAdmin = document.querySelectorAll('.solo-admin');
-    elementosAdmin.forEach(el => {
-        el.style.display = esAdministrador ? '' : 'none';
-    });
-    const btnEliminarFactura = document.getElementById('btnEliminarFactura');
-    if(btnEliminarFactura) {
-        btnEliminarFactura.style.display = esAdministrador ? 'inline-block' : 'none';
-    }
 }
 
 function cerrarSesion() {
@@ -327,7 +310,6 @@ function actualizarEstadoConexion(conectado) {
     }
 }
 
-// ========== MATERIALES — TODOS PUEDEN ELIMINAR ==========
 async function cargarMateriales(){
     const datosLocales = JSON.parse(localStorage.getItem('materialesLocales')) || [];
     listaMateriales = datosLocales.map(m => ({
@@ -360,8 +342,7 @@ async function cargarMateriales(){
 async function guardarMaterial(){
     const nombre = document.getElementById('nombreMaterial').value.trim();
     const unidad = document.getElementById('unidadMedida').value;
-    const valorEntrada = document.getElementById('precioUnitario').value;
-    const precio = Number(valorEntrada);
+    const precio = Number(document.getElementById('precioUnitario').value);
 
     if(!nombre || isNaN(precio) || precio <= 0) {
         return alert('Escribe un nombre y un precio válido');
@@ -400,7 +381,6 @@ function actualizarTablaMateriales(lista){
 }
 
 async function eliminarMaterial(id){
-    // ✅ TODOS pueden eliminar materiales — sin restricción de administrador
     if(String(id).startsWith('l-')) {
         const indice = Number(id.split('-')[1]);
         listaMateriales.splice(indice,1);
@@ -429,7 +409,6 @@ function actualizarSelectMateriales(lista){
     select.innerHTML = lista.map(m => `<option value="${m.nombre}">${m.nombre} - $${Number(m.precio_unitario).toFixed(3)}/${m.unidad}</option>`).join('');
 }
 
-// ========== COMPRAS / FACTURAS ==========
 async function agregarAlCarrito(){
     const nombre = document.getElementById('materialSeleccionado').value;
     const cantidad = parseFloat(document.getElementById('cantidadRecibida').value);
@@ -514,7 +493,6 @@ async function generarFacturas(){
     await cargarHistorialYTotales();
 }
 
-// ========== ELIMINAR FACTURA — SOLO JEFE ==========
 async function eliminarFacturaActual() {
     if(!esAdministrador) return alert("🔒 Solo el Jefe puede eliminar facturas");
     if(!facturaActual) return;
@@ -544,7 +522,7 @@ function mostrarCliente(){
     });
     const lista = Object.values(agrupado);
     document.getElementById("contenidoFactura").innerHTML = `
-        <img src="logo.png" alt="Recicladora Alexander" class="logo-factura">
+        <img src="logo.png" alt="Recicladora Alexander" class="logo-factura" onerror="this.style.display='none'">
         <h2 style="text-align:center; font-size:18px;">RECIBO DE PAGO</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p><strong>Fecha:</strong> ${facturaActual.fecha} | <strong>Hora:</strong> ${facturaActual.hora}</p>
@@ -556,12 +534,13 @@ function mostrarCliente(){
         </table>
         <div class="total-final">Total a Pagar: $${facturaActual.total.toFixed(2)}</div>
     `;
+    document.getElementById('btnEliminarFactura').style.display = esAdministrador ? 'inline-block' : 'none';
 }
 
 function mostrarDetallada(){
     if(!facturaActual) return;
     document.getElementById("contenidoFactura").innerHTML = `
-        <img src="logo.png" alt="Recicladora Alexander" class="logo-factura">
+        <img src="logo.png" alt="Recicladora Alexander" class="logo-factura" onerror="this.style.display='none'">
         <h2 style="text-align:center; font-size:18px;">FACTURA DETALLADA</h2>
         <hr style="border:1px dashed #ccc; margin:10px 0;">
         <p><strong>Fecha:</strong> ${facturaActual.fecha} | <strong>Hora:</strong> ${facturaActual.hora}</p>
@@ -573,6 +552,7 @@ function mostrarDetallada(){
         </table>
         <div class="total-final">Total: $${facturaActual.total.toFixed(2)}</div>
     `;
+    document.getElementById('btnEliminarFactura').style.display = esAdministrador ? 'inline-block' : 'none';
 }
 
 function cerrarVentana(){
@@ -583,7 +563,16 @@ function cerrarVentana(){
     document.getElementById('btnEliminarFactura').style.display = 'none';
 }
 
-// ========== CARGA Y SINCRONIZACIÓN ==========
+function verCompraGuardada(compra, modo) {
+    facturaActual = compra;
+    if(modo === 'cliente') mostrarCliente();
+    else mostrarDetallada();
+    document.getElementById('btnVerDetallada').style.display = 'inline-block';
+    document.getElementById('btnVerCliente').style.display = 'inline-block';
+    document.getElementById('btnEliminarFactura').style.display = esAdministrador ? 'inline-block' : 'none';
+    document.getElementById("ventanaFactura").style.display = "flex";
+}
+
 function alternarVerTodosDias(){
     verTodosLosDiasActivo = !verTodosLosDiasActivo;
     const btn = document.getElementById('btnVerTodosDias');
@@ -620,13 +609,11 @@ async function cargarHistorialYTotales(){
         return;
     }
 
-    const clavesValidas = new Set();
-    comprasNube.forEach(c => clavesValidas.add(generarClaveUnica(c)));
     const mapaUnico = new Map();
     comprasNube.forEach(c => mapaUnico.set(generarClaveUnica(c), c));
     comprasLocales.forEach(c => {
         const clave = generarClaveUnica(c);
-        if(!clavesValidas.has(clave)) mapaUnico.set(clave, c);
+        if(!mapaUnico.has(clave)) mapaUnico.set(clave, c);
     });
     todasLasCompras = Array.from(mapaUnico.values());
     localStorage.setItem('comprasLocales', JSON.stringify(todasLasCompras));
@@ -692,13 +679,24 @@ function dibujarHistorial(listaPersonalizada = null){
             </div>
             <div class="contenido-fechas">
                 <table class="tabla-resumen">
-                    <tr><th>Hora</th><th>Total</th><th>Recibo</th><th>Detalle</th>${esAdministrador ? '<th class="solo-admin">Eliminar</th>' : ''}
+                    <tr>
+                        <th>Hora</th>
+                        <th>Total</th>
+                        <th>Recibo</th>
+                        <th>Detalle</th>
+                        ${esAdministrador ? '<th>Eliminar</th>' : ''}
                     </tr>
-                    ${agrupadas[fecha].map(c => `<tr><td>${c.hora}</td><td>$${c.total.toFixed(2)}</td><td><button class="btn-cliente" onclick='verCompraGuardada(${JSON.stringify(c).replace(/'/g,"&#39;")},"cliente")'>Ver</button></td><td><button class="btn-detallada" onclick='verCompraGuardada(${JSON.stringify(c).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td>${esAdministrador ? `<td class="solo-admin"><button class="btn-danger" onclick='eliminarFacturaDirecta(${JSON.stringify(c).replace(/'/g,"&#39;")})'>🗑️</button></td>` : ''}</tr>`).join('')}
+                    ${agrupadas[fecha].map(c => `
+                        <tr>
+                            <td>${c.hora}</td>
+                            <td>$${c.total.toFixed(2)}</td>
+                            <td><button class="btn-cliente" onclick='verCompraGuardada(${JSON.stringify(c).replace(/'/g,"&#39;")},"cliente")'>Ver</button></td>
+                            <td><button class="btn-detallada" onclick='verCompraGuardada(${JSON.stringify(c).replace(/'/g,"&#39;")},"detallada")'>Ver</button></td>
+                            ${esAdministrador ? `<td><button class="btn-danger" onclick='eliminarFacturaDirecta(${JSON.stringify(c).replace(/'/g,"&#39;")})'>🗑️</button></td>` : ''}
+                        </tr>`).join('')}
                 </table>
             </div>
         </div>`).join('');
-    aplicarPermisos();
 }
 
 async function eliminarFacturaDirecta(compra) {
@@ -736,8 +734,8 @@ function dibujarTotales(listaPersonalizada = null){
 
     let htmlFinal = `
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
-        <button class="${modoVista==='dias'?'':'btn-ver-todos'}" style="${modoVista==='dias'?'background:#2e7d32;':'background:#e0e0e0; color:#333;'}" onclick="cambiarModoVista('dias')">📅 Ver por Días</button>
-        <button class="${modoVista==='acumulado'?'':'btn-ver-todos'}" style="${modoVista==='acumulado'?'background:#7b1fa2;':'background:#e0e0e0; color:#333;'}" onclick="cambiarModoVista('acumulado')">📊 Ver Total Acumulado</button>
+        <button onclick="cambiarModoVista('dias')" style="${modoVista==='dias'?'background:#2e7d32; color:white;':'background:#e0e0e0; color:#333;'} border-radius:6px; padding:8px;">📅 Ver por Días</button>
+        <button onclick="cambiarModoVista('acumulado')" style="${modoVista==='acumulado'?'background:#7b1fa2; color:white;':'background:#e0e0e0; color:#333;'} border-radius:6px; padding:8px;">📊 Ver Total Acumulado</button>
     </div>`;
 
     if(modoVista === 'dias') {
@@ -776,7 +774,7 @@ function dibujarTotales(listaPersonalizada = null){
                         <tr><th>Material</th><th>Cantidad</th><th>Subtotal</th></tr>
                         ${listaMateriales.map(m => `
                           <tr>
-                            <<td>${m.nombre}</td>
+                            <td>${m.nombre}</td>
                             <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
                             <td>$${m.subtotal.toFixed(2)}</td>
                           </tr>`
@@ -786,78 +784,54 @@ function dibujarTotales(listaPersonalizada = null){
                             <td>$${totalDia.toFixed(2)}</td>
                         </tr>
                     </table>
+                    </table>
                 </div>
             </div>`;
         });
+        
         htmlFinal += `
-        <div class="fila-total-general" style="padding:12px; font-size:15px; margin-top:10px;">
-            💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}
+        <div class="fila-total-general" style="padding:12px; margin-top:10px; border-radius:6px;">
+            TOTAL GENERAL: $${totalGeneral.toFixed(2)}
         </div>`;
-    }
-
-    if(modoVista === 'acumulado') {
-        const acumulado = {};
+    } 
+    else {
+        const acumuladoPorMaterial = {};
         mostrar.forEach(compra => {
             if(compra.detalles) compra.detalles.forEach(item => {
-                if(!acumulado[item.nombre]) {
-                    acumulado[item.nombre] = {
+                if(!acumuladoPorMaterial[item.nombre]) {
+                    acumuladoPorMaterial[item.nombre] = {
                         nombre: item.nombre,
                         cantidad: 0,
                         subtotal: 0,
                         unidad: item.unidad || 'Libra'
                     };
                 }
-                acumulado[item.nombre].cantidad += Number(item.cantidad) || 0;
-                acumulado[item.nombre].subtotal += Number(item.subtotal) || 0;
+                acumuladoPorMaterial[item.nombre].cantidad += Number(item.cantidad) || 0;
+                acumuladoPorMaterial[item.nombre].subtotal += Number(item.subtotal) || 0;
             });
         });
-        const listaAcumulada = Object.values(acumulado);
-        const granTotal = listaAcumulada.reduce((s, m) => s + m.subtotal, 0);
-
+        const listaAcumulada = Object.values(acumuladoPorMaterial);
+        const totalAcumulado = listaAcumulada.reduce((s,m) => s + m.subtotal, 0);
+        
         htmlFinal += `
-        <table class="tabla-resumen" style="margin-top:10px;">
-            <tr style="background:#7b1fa2; color:white;">
-                <th colspan="3" style="text-align:center; font-size:15px;">📊 TOTAL ACUMULADO GENERAL</th>
-            </tr>
-            <tr>
-                <th>Material</th>
-                <th>Cantidad Total</th>
-                <th>Subtotal Total</th>
-            </tr>
+        <table class="tabla-resumen">
+            <tr><th>Material</th><th>Cantidad Total</th><th>Subtotal Acumulado</th></tr>
             ${listaAcumulada.map(m => `
-                <tr>
-                    <td>${m.nombre}</td>
-                    <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
-                    <td>$${m.subtotal.toFixed(2)}</td>
-                </tr>`
+              <tr>
+                <td>${m.nombre}</td>
+                <td>${m.cantidad.toFixed(1)} ${m.unidad}</td>
+                <td>$${m.subtotal.toFixed(2)}</td>
+              </tr>`
             ).join('')}
             <tr class="fila-total-general">
-                <td colspan="2">💰 GRAN TOTAL</td>
-                <td>$${granTotal.toFixed(2)}</td>
+                <td colspan="2">TOTAL ACUMULADO GENERAL</td>
+                <td>$${totalAcumulado.toFixed(2)}</td>
             </tr>
         </table>`;
     }
-
+    
     contenedor.innerHTML = htmlFinal;
 }
-
-function verCompraGuardada(compra, modo) {
-    facturaActual = compra;
-    if(modo === 'cliente') {
-        mostrarCliente();
-    } else {
-        mostrarDetallada();
-    }
-    document.getElementById('btnVerDetallada').style.display = 'inline-block';
-    document.getElementById('btnVerCliente').style.display = 'inline-block';
-    document.getElementById('btnEliminarFactura').style.display = esAdministrador ? 'inline-block' : 'none';
-    document.getElementById("ventanaFactura").style.display = "flex";
-}
-
-// Inicio automático al cargar la página
-document.addEventListener('DOMContentLoaded', () => {
-    // Si ya tenía sesión, se mantiene
-});
 </script>
 </body>
 </html>
